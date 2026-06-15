@@ -1,0 +1,311 @@
+{
+    "openapi": "3.0.0",
+    "paths": {
+        "/search": {
+            "get": {
+                "operationId": "search",
+                "summary": "",
+                "description": "Durchsuchen der Pegelonline-Stationen mit einer Liste an optionalen Suchparametern. Bei Angabe mehrerer Parameter werden diese mit UND verknüpft.",
+                "parameters": [
+                    {
+                        "name": "station",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über einen Stationsnamen (z.B. <code>Köln</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "gewaesser",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über ein Gewässer (z.B. <code>Rhein</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "agency",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über eine Agency (z.B. <code>Dresden</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "land",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über ein Bundesland (z.B. <code>Hamburg</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "country",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über ein Land (z.B. <code>Deutschland</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "einzugsgebiet",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über ein Fluss-Einzugsgebiet (z.B. <code>Ems</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "kreis",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über ein Landkreis (z.B. <code>Emsland</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "parameter",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über einen Beobachtungsparameter (z.B. <code>Wassertemperatur</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "bbox",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über eine BoundingBox in der Form <code>minLon, minLat, maxLon, maxLat</code> (z.B. <code>7,52,8,53</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "required": false,
+                        "in": "query",
+                        "description": "Suche über alle verfügbaren Parameter (z.B. <code>Köln</code>)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste von aufbereiteten Stationen",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AggregatedStationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": [
+                    "Suche"
+                ]
+            }
+        }
+    },
+    "info": {
+        "title": "Dict API für Pegelonline",
+        "description": "",
+        "contact": {
+        }
+    },
+    "tags": [
+    ],
+    "servers": [
+    ],
+    "components": {
+        "schemas": {
+            "PegelonlineTimeseries": {
+                "type": "object",
+                "properties": {
+                    "shortname": {
+                        "type": "string",
+                        "description": "Shortname zur Zeitreihe"
+                    },
+                    "longname": {
+                        "type": "string",
+                        "description": "Longname zur Zeitreihe"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "description": "Messeinheit der Zeitreihe"
+                    },
+                    "mqtttopic": {
+                        "type": "string",
+                        "description": "mqtt Topic für die Zeitreihe"
+                    },
+                    "pegelonlinelink": {
+                        "type": "string",
+                        "description": "Link zu den Messwerten"
+                    }
+                },
+                "required": [
+                    "shortname",
+                    "longname",
+                    "unit",
+                    "mqtttopic",
+                    "pegelonlinelink"
+                ]
+            },
+            "PegelonlineStation": {
+                "type": "object",
+                "properties": {
+                    "uuid": {
+                        "type": "string",
+                        "description": "Eindeutige Stations-ID aus Pegelonline-API"
+                    },
+                    "shortname": {
+                        "type": "string",
+                        "description": "Shortname aus Pegelonline-API"
+                    },
+                    "longname": {
+                        "type": "string",
+                        "description": "Longname aus Pegelonline-API"
+                    },
+                    "agency": {
+                        "type": "string",
+                        "description": "Agency aus Pegelonline-API"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "description": "Longitude aus Pegelonline-API"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "description": "Latitude aus Pegelonline-API"
+                    },
+                    "water": {
+                        "type": "object",
+                        "description": "Water aus Pegelonline-API"
+                    },
+                    "water_alternatives": {
+                        "description": "Alternative Bennenungen zu Water",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "city": {
+                        "type": "string",
+                        "description": "Stadt - angereichert in der DICT-API"
+                    },
+                    "city_alternatives": {
+                        "description": "Alternative Bennenungen zur Stadt",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "country": {
+                        "type": "string",
+                        "description": "Land - angereichert in der DICT-API"
+                    },
+                    "country_alternatives": {
+                        "description": "Alternative Bennenungen zum Land",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "land": {
+                        "type": "string",
+                        "description": "Bundesland - angereichert in der DICT-API"
+                    },
+                    "land_alternatives": {
+                        "description": "Alternative Bennenungen zum Bundesland",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "kreis": {
+                        "type": "string",
+                        "description": "Landkreis - angereichert in der DICT-API"
+                    },
+                    "kreis_alternatives": {
+                        "description": "Alternative Bennenungen zum Landkreis",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "einzugsgebiet": {
+                        "type": "string",
+                        "description": "Einzugsgebiet - angereichert in der DICT-API"
+                    },
+                    "einzugsgebiet_alternatives": {
+                        "description": "Alternative Bennenungen zum Einzugsgebiet",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "mqtttopic": {
+                        "type": "string",
+                        "description": "Zugehöriger mqtt topic für alle Messungen an der Station"
+                    },
+                    "timeseries": {
+                        "description": "Timeseries aus Pegelonline-API",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PegelonlineTimeseries"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "uuid",
+                    "shortname",
+                    "longname",
+                    "agency",
+                    "water",
+                    "timeseries"
+                ]
+            },
+            "AggregatedStationResponse": {
+                "type": "object",
+                "properties": {
+                    "mqtttopics": {
+                        "description": "Liste aller MQTT topics zu den Stationen",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "pegelonlinelinks": {
+                        "description": "Liste aller Pegelonline-URLs zu den Stationen",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "stations": {
+                        "description": "Liste aller Pegelonlinestationen",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PegelonlineStation"
+                        }
+                    }
+                },
+                "required": [
+                    "mqtttopics",
+                    "pegelonlinelinks",
+                    "stations"
+                ]
+            }
+        }
+    }
+}
