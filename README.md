@@ -60,3 +60,9 @@ Searches for stations with the following optional parameters:
 - `q`: General search query.
 
 The API combines multiple parameters with a logical AND.
+
+## Resources
+
+- `water-bodies://list`: Returns a list of all available water bodies (Gewässer).
+- `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations.
+- `states://{state}/stations`: Returns a list of all stations within a specific federal state (e.g., `states://Nordrhein-Westfalen/stations`).
