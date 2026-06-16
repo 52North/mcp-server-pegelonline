@@ -57,6 +57,72 @@ async def search_stations(
         response.raise_for_status()
         return response.json()
 
+@mcp.tool()
+async def get_latest_measurements(uuid: str) -> dict:
+    """
+    Fetch the latest measurements (e.g., water level, flow, temperature) for a specific station.
+    
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+    """
+    url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
+    params = {
+        "includeTimeseries": "true",
+        "includeCurrentMeasurement": "true"
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Clean up the response to only return relevant measurement data
+        measurements = []
+        for ts in data.get("timeseries", []):
+            curr = ts.get("currentMeasurement")
+            if curr:
+                measurements.append({
+                    "parameter": ts.get("longname"),
+                    "shortname": ts.get("shortname"),
+                    "value": curr.get("value"),
+                    "unit": ts.get("unit"),
+                    "timestamp": curr.get("timestamp"),
+                    "state": curr.get("stateMnwMhw") or curr.get("stateNswHsw")
+                })
+        
+        return {
+            "station": data.get("longname"),
+            "water": data.get("water", {}).get("longname"),
+            "measurements": measurements
+        }
+
+@mcp.tool()
+async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> dict:
+    """
+    Fetch the most recent measurements for a specific parameter of a station.
+    
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+        parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
+        count: Number of recent measurements to fetch (default: 2).
+    """
+    url = f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        # The API returns measurements in chronological order, so we take the last 'count' items
+        recent = data[-count:] if data else []
+        recent.reverse() # Most recent first
+        
+        return {
+            "uuid": uuid,
+            "parameter": parameter,
+            "measurements": recent
+        }
+
 @mcp.resource("water-bodies://list")
 async def list_water_bodies() -> str:
     """List all available water bodies (Gewässer)."""
