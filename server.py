@@ -5,7 +5,7 @@ from typing import Optional
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from helpers import cache_get, cache_set, get_json
+from helpers import cache_get, cache_set, get_json, haversine_km
 
 # Logging goes to stderr, so it does not interfere with the stdio MCP transport
 logging.basicConfig(
@@ -95,6 +95,97 @@ async def search_stations(
             for ts in (s.get("timeseries") or [])
             if isinstance(ts, dict) and ts.get("pegelonlinelink")
         ],
+    }
+
+@mcp.tool()
+async def get_station_info(uuid: str) -> dict:
+    """
+    Fetch static metadata for a specific station (name, agency, coordinates,
+    water body, gauge zero and available observation parameters) without
+    any measurement values.
+
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+    """
+    url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
+    data = await get_json(url, params={"includeTimeseries": "true"})
+
+    parameters = [
+        {
+            "shortname": ts.get("shortname"),
+            "longname": ts.get("longname"),
+            "unit": ts.get("unit"),
+            "equidistance_minutes": ts.get("equidistance"),
+            "gaugeZero": ts.get("gaugeZero"),
+        }
+        for ts in data.get("timeseries", [])
+    ]
+
+    return {
+        "uuid": data.get("uuid"),
+        "number": data.get("number"),
+        "shortname": data.get("shortname"),
+        "longname": data.get("longname"),
+        "agency": data.get("agency"),
+        "longitude": data.get("longitude"),
+        "latitude": data.get("latitude"),
+        "km": data.get("km"),
+        "water": data.get("water", {}).get("longname"),
+        "parameters": parameters,
+    }
+
+@mcp.tool()
+async def find_nearest_stations(
+    latitude: float,
+    longitude: float,
+    radius_km: float = 25,
+    limit: int = 10
+) -> dict:
+    """
+    Find gauge stations near a geographic coordinate, sorted by distance
+    (nearest first).
+
+    Args:
+        latitude: Latitude of the search center (WGS84, e.g., 50.94).
+        longitude: Longitude of the search center (WGS84, e.g., 6.96).
+        radius_km: Search radius in kilometers (default: 25).
+        limit: Maximum number of stations to return (default: 10).
+    """
+    if radius_km <= 0:
+        raise ToolError("radius_km must be greater than 0.")
+    if limit < 1:
+        raise ToolError("limit must be at least 1.")
+
+    # The official API filters by radius server-side but does not sort
+    data = await get_json(
+        f"{OFFICIAL_API_URL}/stations.json",
+        params={"latitude": latitude, "longitude": longitude, "radius": radius_km},
+    )
+
+    stations = []
+    for s in data:
+        if s.get("latitude") is None or s.get("longitude") is None:
+            continue
+        stations.append({
+            "uuid": s.get("uuid"),
+            "shortname": s.get("shortname"),
+            "longname": s.get("longname"),
+            "agency": s.get("agency"),
+            "water": (s.get("water") or {}).get("longname"),
+            "latitude": s.get("latitude"),
+            "longitude": s.get("longitude"),
+            "distance_km": round(
+                haversine_km(latitude, longitude, s["latitude"], s["longitude"]), 2
+            ),
+        })
+    stations.sort(key=lambda s: s["distance_km"])
+
+    total = len(stations)
+    return {
+        "total_matches": total,
+        "returned": min(total, limit),
+        "truncated": total > limit,
+        "stations": stations[:limit],
     }
 
 @mcp.tool()
