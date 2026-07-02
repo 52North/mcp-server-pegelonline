@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "pegelonline-dict": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "server.py"
+      ]
+    }
+  }
+}
