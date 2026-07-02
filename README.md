@@ -25,7 +25,7 @@ An MCP Server that provides tools to search for gauge stations in Germany using 
 
 To run the server in dev mode (with inspector):
 ```bash
-uv run fastmcp dev server.py
+uv run fastmcp dev inspector server.py
 ```
 
 To run the server normally:
