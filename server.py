@@ -1,8 +1,11 @@
 import logging
+import math
 import os
+from pathlib import Path
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.apps import UI_MIME_TYPE, AppConfig, ResourceCSP
 from fastmcp.exceptions import ToolError
 
 from helpers import cache_get, cache_set, get_json, haversine_km
@@ -22,6 +25,8 @@ BASE_URL = os.environ.get(
 OFFICIAL_API_URL = os.environ.get(
     "PEGELONLINE_API_URL", "https://pegelonline.wsv.de/webservices/rest-api/v2"
 ).rstrip("/")
+
+MAP_UI_URI = "ui://pegelonline-dict/stations-map"
 
 
 @mcp.tool()
@@ -134,6 +139,65 @@ async def get_station_info(uuid: str) -> dict:
         "parameters": parameters,
     }
 
+async def _fetch_nearest_stations(
+    latitude: float, longitude: float, radius_km: float, limit: int
+) -> dict:
+    """Fetch stations around a coordinate, sorted nearest-first."""
+    if radius_km <= 0:
+        raise ToolError("radius_km must be greater than 0.")
+    if limit < 1:
+        raise ToolError("limit must be at least 1.")
+
+    # The dict API has no radius filter but supports a bounding box and
+    # enriches each station with its MQTT topic and timeseries. Query the
+    # box enclosing the radius, then filter precisely by distance.
+    dlat = radius_km / 111.32
+    dlon = radius_km / (111.32 * math.cos(math.radians(latitude)))
+    bbox = (
+        f"{longitude - dlon},{latitude - dlat},"
+        f"{longitude + dlon},{latitude + dlat}"
+    )
+    data = await get_json(f"{BASE_URL}/search", params={"bbox": bbox})
+
+    stations = []
+    for s in data.get("stations", []):
+        if s.get("latitude") is None or s.get("longitude") is None:
+            continue
+        distance = haversine_km(latitude, longitude, s["latitude"], s["longitude"])
+        if distance > radius_km:
+            continue
+        timeseries = s.get("timeseries") or []
+        if isinstance(timeseries, dict):
+            timeseries = [timeseries]
+        stations.append({
+            "uuid": s.get("uuid"),
+            "shortname": s.get("shortname"),
+            "longname": s.get("longname"),
+            "agency": s.get("agency"),
+            "water": (s.get("water") or {}).get("longname"),
+            "latitude": s.get("latitude"),
+            "longitude": s.get("longitude"),
+            "distance_km": round(distance, 2),
+            "mqtttopic": s.get("mqtttopic"),
+            "parameters": [
+                {
+                    "shortname": ts.get("shortname"),
+                    "longname": ts.get("longname"),
+                    "unit": ts.get("unit"),
+                }
+                for ts in timeseries
+            ],
+        })
+    stations.sort(key=lambda s: s["distance_km"])
+
+    total = len(stations)
+    return {
+        "total_matches": total,
+        "returned": min(total, limit),
+        "truncated": total > limit,
+        "stations": stations[:limit],
+    }
+
 @mcp.tool()
 async def find_nearest_stations(
     latitude: float,
@@ -151,42 +215,50 @@ async def find_nearest_stations(
         radius_km: Search radius in kilometers (default: 25).
         limit: Maximum number of stations to return (default: 10).
     """
-    if radius_km <= 0:
-        raise ToolError("radius_km must be greater than 0.")
-    if limit < 1:
-        raise ToolError("limit must be at least 1.")
+    return await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
 
-    # The official API filters by radius server-side but does not sort
-    data = await get_json(
-        f"{OFFICIAL_API_URL}/stations.json",
-        params={"latitude": latitude, "longitude": longitude, "radius": radius_km},
-    )
+@mcp.tool(app=AppConfig(resource_uri=MAP_UI_URI))
+async def show_stations_map(
+    latitude: float,
+    longitude: float,
+    radius_km: float = 25,
+    limit: int = 50
+) -> dict:
+    """
+    Show an interactive map of all gauge stations within a search radius
+    around a geographic coordinate. In MCP-Apps-capable clients the map is
+    rendered inline (OpenStreetMap with radius circle and station markers);
+    other clients receive the station list as structured data.
 
-    stations = []
-    for s in data:
-        if s.get("latitude") is None or s.get("longitude") is None:
-            continue
-        stations.append({
-            "uuid": s.get("uuid"),
-            "shortname": s.get("shortname"),
-            "longname": s.get("longname"),
-            "agency": s.get("agency"),
-            "water": (s.get("water") or {}).get("longname"),
-            "latitude": s.get("latitude"),
-            "longitude": s.get("longitude"),
-            "distance_km": round(
-                haversine_km(latitude, longitude, s["latitude"], s["longitude"]), 2
-            ),
-        })
-    stations.sort(key=lambda s: s["distance_km"])
-
-    total = len(stations)
+    Args:
+        latitude: Latitude of the search center (WGS84, e.g., 50.94).
+        longitude: Longitude of the search center (WGS84, e.g., 6.96).
+        radius_km: Search radius in kilometers (default: 25).
+        limit: Maximum number of stations to show (default: 50).
+    """
+    result = await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
     return {
-        "total_matches": total,
-        "returned": min(total, limit),
-        "truncated": total > limit,
-        "stations": stations[:limit],
+        "center": {"latitude": latitude, "longitude": longitude},
+        "radius_km": radius_km,
+        **result,
     }
+
+@mcp.resource(
+    MAP_UI_URI,
+    mime_type=UI_MIME_TYPE,
+    app=AppConfig(
+        csp=ResourceCSP(
+            resource_domains=[
+                "https://unpkg.com",
+                "https://tile.openstreetmap.org",
+            ],
+        ),
+        prefers_border=True,
+    ),
+)
+def stations_map_ui() -> str:
+    """Leaflet map UI rendered inline for the show_stations_map tool."""
+    return (Path(__file__).parent / "stations_map.html").read_text(encoding="utf-8")
 
 @mcp.tool()
 async def get_latest_measurements(uuid: str) -> dict:

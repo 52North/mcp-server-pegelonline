@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pegelonline stations map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; }
+  #map { position: absolute; inset: 0; }
+  #status {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: rgba(255, 255, 255, 0.9); border-radius: 6px;
+    padding: 6px 10px; font: 13px/1.4 system-ui, sans-serif;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="status">Waiting for station data…</div>
+<script>
+  "use strict";
+
+  const MAP_HEIGHT_PX = 480; // requested iframe height via ui/notifications/size-changed
+
+  const map = L.map("map").setView([51.2, 9.4], 6); // Germany until data arrives
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  const dataLayer = L.layerGroup().addTo(map);
+  const statusEl = document.getElementById("status");
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  function render(data) {
+    dataLayer.clearLayers();
+    const center = data.center || {};
+    const radiusM = (data.radius_km || 0) * 1000;
+    const stations = data.stations || [];
+
+    let circle = null;
+    if (typeof center.latitude === "number" && typeof center.longitude === "number") {
+      L.marker([center.latitude, center.longitude], {
+        icon: L.divIcon({ className: "", html: "&#10133;", iconSize: [16, 16] }),
+        title: "Search center",
+      }).addTo(dataLayer).bindPopup("Search center");
+      if (radiusM > 0) {
+        circle = L.circle([center.latitude, center.longitude], {
+          radius: radiusM, color: "#0057b8", weight: 2, fillOpacity: 0.05,
+        }).addTo(dataLayer);
+      }
+    }
+
+    for (const s of stations) {
+      if (typeof s.latitude !== "number" || typeof s.longitude !== "number") continue;
+      const params = (s.parameters || [])
+        .map(p => `${escapeHtml(p.shortname)} &ndash; ${escapeHtml(p.longname)} (${escapeHtml(p.unit)})`)
+        .join("<br>");
+      L.marker([s.latitude, s.longitude]).addTo(dataLayer).bindPopup(
+        `<b>${escapeHtml(s.longname || s.shortname)}</b><br>` +
+        `${escapeHtml(s.water || "")}<br>` +
+        `${s.distance_km != null ? s.distance_km + " km" : ""}<br>` +
+        (params ? `<br><b>Parameters</b><br><small>${params}</small><br>` : "") +
+        (s.mqtttopic ? `<br><b>MQTT topic</b><br><code style="font-size:11px;word-break:break-all">${escapeHtml(s.mqtttopic)}</code><br>` : "") +
+        `<br><small>UUID: ${escapeHtml(s.uuid || "")}</small>`,
+        { maxWidth: 320 }
+      );
+    }
+
+    if (circle) {
+      map.fitBounds(circle.getBounds(), { padding: [20, 20] });
+    } else if (stations.length) {
+      map.fitBounds(L.latLngBounds(stations.map(s => [s.latitude, s.longitude])), { padding: [20, 20] });
+    }
+
+    const shown = stations.length;
+    const total = data.total_matches ?? shown;
+    statusEl.textContent = data.truncated
+      ? `${shown} of ${total} stations (truncated)`
+      : `${shown} station${shown === 1 ? "" : "s"}`;
+  }
+
+  function extractToolData(result) {
+    if (result && typeof result.structuredContent === "object" && result.structuredContent !== null) {
+      return result.structuredContent;
+    }
+    for (const item of (result && result.content) || []) {
+      if (item.type === "text") {
+        try { return JSON.parse(item.text); } catch { /* not JSON */ }
+      }
+    }
+    return null;
+  }
+
+  // --- Minimal MCP Apps bridge (JSON-RPC 2.0 over postMessage) ---
+  const INIT_ID = 1;
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+
+    if (msg.id === INIT_ID && msg.result) {
+      window.parent.postMessage(
+        { jsonrpc: "2.0", method: "ui/notifications/initialized" }, "*"
+      );
+      // Ask the host for a fixed map height; Leaflet fills whatever box it gets
+      window.parent.postMessage({
+        jsonrpc: "2.0",
+        method: "ui/notifications/size-changed",
+        params: { height: MAP_HEIGHT_PX },
+      }, "*");
+      return;
+    }
+
+    if (msg.method === "ui/notifications/tool-result") {
+      const data = extractToolData(msg.params);
+      if (data) {
+        render(data);
+      } else {
+        statusEl.textContent = "Tool returned no map data.";
+      }
+    }
+  });
+
+  window.parent.postMessage({
+    jsonrpc: "2.0",
+    id: INIT_ID,
+    method: "ui/initialize",
+    params: {
+      appInfo: { name: "pegelonline-stations-map", version: "1.0.0" },
+      appCapabilities: {},
+      protocolVersion: "2025-11-21",
+    },
+  }, "*");
+</script>
+</body>
+</html>
