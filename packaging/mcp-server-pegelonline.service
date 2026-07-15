@@ -1,0 +1,18 @@
+# Minimal reference unit. Configuration is read from the packaged env file
+
+[Unit]
+Description=Pegelonline-Dict MCP Server (Streamable HTTP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=mcpsvc
+Group=mcpsvc
+EnvironmentFile=/etc/mcp-server-pegelonline/mcp-server.env
+WorkingDirectory=/opt/mcp-server-pegelonline/app
+ExecStart=/opt/mcp-server-pegelonline/venv/bin/uvicorn main:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

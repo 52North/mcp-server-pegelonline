@@ -1,0 +1,17 @@
+# Keep the Docker build context small. The context is the repository root
+# (build with: docker build -f packaging/Dockerfile .).
+.venv/
+.git/
+.gitignore
+.claude/
+.gemini/
+.mcp.json
+__pycache__/
+*.pyc
+build/
+dist/
+wheels/
+*.egg-info/
+packaging/RPMS/
+packaging/dist/
+*.tar.gz
