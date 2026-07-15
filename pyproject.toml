@@ -3,6 +3,8 @@ name = "mcp-server-pegelonline-dict-api"
 version = "0.1.0"
 description = "An MCP Server that provides tools to search for gauge stations in Germany using the Pegelonline Dict API."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=3.4.2",
