@@ -7,6 +7,8 @@ from typing import Optional
 from fastmcp import FastMCP
 from fastmcp.apps import UI_MIME_TYPE, AppConfig, ResourceCSP
 from fastmcp.exceptions import ToolError
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 from helpers import cache_get, cache_set, get_json, haversine_km
 
@@ -359,6 +361,16 @@ async def list_stations_in_state(state: str) -> str:
     data = await get_json(f"{BASE_URL}/search", params={"land": state})
     stations = data.get("stations", [])
     return "\n".join([f"{s['longname']} (UUID: {s['uuid']}, Gewässer: {s['water']['longname']})" for s in stations])
+
+@mcp.custom_route("/healthz", methods=["GET"])
+async def healthz(request: Request) -> PlainTextResponse:
+    """Liveness probe for a load balancer.
+
+    The MCP endpoint (/mcp) requires a JSON-RPC handshake, so it is unsuitable
+    as an LB health check. This lightweight route returns 200 OK instead.
+    """
+    return PlainTextResponse("ok")
+
 
 if __name__ == "__main__":
     mcp.run()
