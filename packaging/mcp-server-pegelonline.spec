@@ -68,7 +68,7 @@ uv pip install --no-cache --require-hashes \
 
 # Application files
 install -d -m 0755 %{buildroot}%{appdir}/app
-install -m 0644 server.py helpers.py asgi.py stations_map.html \
+install -m 0644 server.py helpers.py main.py stations_map.html \
     openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
 
 # systemd unit
