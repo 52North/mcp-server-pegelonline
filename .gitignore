@@ -9,3 +9,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Packaging build artifacts
+packaging/*.tar.gz
+packaging/RPMS/
+packaging/dist/
+packaging/*-bom.json

@@ -60,11 +60,18 @@ The server speaks the Streamable HTTP transport at /mcp and exposes a health pro
 # uv creates a *relocatable* venv: its console scripts resolve the interpreter
 # relative to their own location instead of a hardcoded absolute shebang, so the
 # venv works once installed at %{appdir}/venv even though it is materialized under
-# the buildroot. (uv must be on PATH at build time.)
+# the buildroot.
 uv venv --relocatable --python %{venvpy} %{buildroot}%{appdir}/venv
 uv pip install --no-cache --require-hashes \
     --python %{buildroot}%{appdir}/venv/bin/python \
     -r packaging/requirements.txt
+
+# CycloneDX SBOM, generated from the bundled venv so it reflects exactly what
+# ships (with a full dependency graph). Shipped as %doc.
+uvx --from "cyclonedx-bom>=7.3.0" cyclonedx-py environment \
+    %{buildroot}%{appdir}/venv/bin/python \
+    --pyproject pyproject.toml --output-reproducible \
+    --output-file %{appname}-bom.json
 
 # Application files
 install -d -m 0755 %{buildroot}%{appdir}/app
@@ -100,7 +107,7 @@ exit 0
 
 %files
 %license LICENSE
-%doc README.md ROADMAP.md
+%doc README.md ROADMAP.md %{appname}-bom.json
 %{_unitdir}/%{appname}.service
 %{appdir}
 %dir %attr(0750, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}
