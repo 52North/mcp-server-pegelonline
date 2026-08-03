@@ -11,7 +11,7 @@ User=mcpsvc
 Group=mcpsvc
 EnvironmentFile=/etc/mcp-server-pegelonline/mcp-server.env
 WorkingDirectory=/opt/mcp-server-pegelonline/app
-ExecStart=/opt/mcp-server-pegelonline/venv/bin/uvicorn main:app
+ExecStart=/opt/mcp-server-pegelonline/venv/bin/uvicorn main:app --log-config /etc/mcp-server-pegelonline/log-config.yaml
 Restart=on-failure
 
 [Install]

@@ -89,6 +89,10 @@ install -d -m 0750 %{buildroot}%{_sysconfdir}/%{appname}/tls
 install -m 0640 packaging/mcp-server.env \
     %{buildroot}%{_sysconfdir}/%{appname}/mcp-server.env
 
+# uvicorn logging config
+install -m 0640 packaging/log-config.yaml \
+    %{buildroot}%{_sysconfdir}/%{appname}/log-config.yaml
+
 %pre
 getent group %{svcgroup} >/dev/null || groupadd -r %{svcgroup}
 getent passwd %{svcuser} >/dev/null || \
@@ -113,3 +117,4 @@ exit 0
 %dir %attr(0750, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}
 %dir %attr(0750, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/tls
 %config(noreplace) %attr(0640, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/mcp-server.env
+%config(noreplace) %attr(0640, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/log-config.yaml

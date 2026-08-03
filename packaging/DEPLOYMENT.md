@@ -50,6 +50,7 @@ with `uv pip install --require-hashes`.
 | `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit |
 | `/etc/mcp-server-pegelonline/` (dir) | `mcpsvc` | config dir |
 | `/etc/mcp-server-pegelonline/mcp-server.env` | `mcpsvc` | default env config, `%config(noreplace)`; read by the unit's `EnvironmentFile` |
+| `/etc/mcp-server-pegelonline/log-config.yaml` | `mcpsvc` | uvicorn logging config, `%config(noreplace)`; passed via the unit's `--log-config` |
 
 The RPM also creates the `mcpsvc` system user/group (`%pre`)
 It does **not** start or enable the service on install (`%systemd_post` presets only).
@@ -82,7 +83,15 @@ The MCP endpoint is then `http://localhost:8000/mcp`.
 Edit the env file, then restart:
 
 ```bash
-sudo vi /etc/mcp-server-pegelonline/mcp-server.env    # e.g. LOG_LEVEL=DEBUG
+sudo vi /etc/mcp-server-pegelonline/mcp-server.env    # upstream URLs, bind/port
+sudo systemctl restart mcp-server-pegelonline
+```
+
+To change the log level or format, edit the uvicorn logging config (the unit passes
+it via `--log-config`), then restart:
+
+```bash
+sudo vi /etc/mcp-server-pegelonline/log-config.yaml
 sudo systemctl restart mcp-server-pegelonline
 ```
 

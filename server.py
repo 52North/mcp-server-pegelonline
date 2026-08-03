@@ -1,4 +1,3 @@
-import logging
 import math
 import os
 from pathlib import Path
@@ -10,13 +9,7 @@ from fastmcp.exceptions import ToolError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from helpers import cache_get, cache_set, get_json, haversine_km
-
-# Logging goes to stderr, so it does not interfere with the stdio MCP transport
-logging.basicConfig(
-    level=os.environ.get("LOG_LEVEL", "INFO"),
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-)
+from helpers import cache_get, cache_set, configure_logging, get_json, haversine_km
 
 # Initialize FastMCP server
 mcp = FastMCP("Pegelonline Dict API")
@@ -373,4 +366,7 @@ async def healthz(request: Request) -> PlainTextResponse:
 
 
 if __name__ == "__main__":
+    # Configure logging for dev setup.
+    # uvicorn logging is configured via --log-file config.
+    configure_logging()
     mcp.run()

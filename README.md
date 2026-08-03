@@ -165,4 +165,24 @@ list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
 
 - `PEGELONLINE_DICT_API_URL`: Override the Dict API base URL.
 - `PEGELONLINE_API_URL`: Override the official Pegelonline REST API base URL.
-- `LOG_LEVEL`: Logging level for request logging on stderr (default: `INFO`).
+- `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run python server.py`),
+  written to stderr (default: `INFO`).
+
+## Logging
+
+Logs always go to **stderr** in the format `<time> <LEVEL> <logger> <message>`, so
+they never interfere with the stdio JSON-RPC channel and are captured by journald
+in production. The two runtimes are configured differently but share this format:
+
+- **stdio (dev)** — `uv run python server.py` configures logging in-process; tune it
+  with `LOG_LEVEL`.
+- **HTTP / uvicorn (prod)** — logging is driven by a
+  [`--log-config`](https://www.uvicorn.org/settings/#logging) file
+  ([`packaging/log-config.yaml`](packaging/log-config.yaml)), which unifies the app,
+  `uvicorn`, and access logs under one format. Edit that file (format string or
+  levels) and restart to change production logging. Note the
+  effective level in this mode comes from the file, not `LOG_LEVEL`.
+
+  ```bash
+  uv run uvicorn main:app --port 8000 --log-config packaging/log-config.yaml
+  ```

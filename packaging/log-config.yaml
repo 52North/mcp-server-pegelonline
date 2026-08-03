@@ -1,0 +1,38 @@
+# Uvicorn logging configuration.
+#
+# This file is authoritative for the production (uvicorn) runtime; the systemd
+# unit passes it via `uvicorn --log-config`.
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+handlers:
+  stderr:
+    class: logging.StreamHandler
+    formatter: default
+    stream: ext://sys.stderr
+
+root:
+  level: INFO
+  handlers: [stderr]
+
+loggers:
+  # Application HTTP tracing (helpers.get_json).
+  pegelonline-dict:
+    level: INFO
+  # Route uvicorn's own loggers through the single root/stderr handler so their
+  # output shares the format above instead of uvicorn's colored default.
+  uvicorn:
+    level: INFO
+    handlers: [stderr]
+    propagate: false
+  uvicorn.error:
+    level: INFO
+  uvicorn.access:
+    level: INFO
+    handlers: [stderr]
+    propagate: false

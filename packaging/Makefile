@@ -34,7 +34,8 @@ $(SOURCE): requirements.txt
 			LICENSE README.md ROADMAP.md pyproject.toml uv.lock \
 			packaging/requirements.txt \
 			packaging/$(NAME).service \
-			packaging/mcp-server.env
+			packaging/mcp-server.env \
+			packaging/log-config.yaml
 
 # Hashed dependency list, exported from uv.lock (needs uv). Generated on demand
 # if missing; run `make requirements` to force a refresh after changing deps.
