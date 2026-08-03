@@ -1,3 +1,4 @@
+import logging
 import math
 import os
 from pathlib import Path
@@ -10,6 +11,10 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from helpers import cache_get, cache_set, configure_logging, get_json, haversine_km
+
+# Share the application logger namespace with helpers.py so a single log-config
+# entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
+logger = logging.getLogger("pegelonline-dict")
 
 # Initialize FastMCP server
 mcp = FastMCP("Pegelonline Dict API")
@@ -70,8 +75,10 @@ async def search_stations(
     }
     # Remove None values
     params = {k: v for k, v in params.items() if v is not None}
+    logger.info("search_stations: filters=%s limit=%d", params, limit)
 
     if limit < 1:
+        logger.warning("search_stations: rejected limit=%d (must be >= 1)", limit)
         raise ToolError("limit must be at least 1.")
 
     data = await get_json(f"{BASE_URL}/search", params=params)
@@ -80,6 +87,10 @@ async def search_stations(
     truncated = total > limit
     if truncated:
         stations = stations[:limit]
+    logger.info(
+        "search_stations: %d matches, returning %d (truncated=%s)",
+        total, len(stations), truncated,
+    )
 
     return {
         "total_matches": total,
@@ -107,6 +118,7 @@ async def get_station_info(uuid: str) -> dict:
     Args:
         uuid: The unique identifier (UUID) of the station.
     """
+    logger.info("get_station_info: uuid=%s", uuid)
     url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
     data = await get_json(url, params={"includeTimeseries": "true"})
 
@@ -120,6 +132,10 @@ async def get_station_info(uuid: str) -> dict:
         }
         for ts in data.get("timeseries", [])
     ]
+    logger.info(
+        "get_station_info: uuid=%s -> %s (%d parameters)",
+        uuid, data.get("longname"), len(parameters),
+    )
 
     return {
         "uuid": data.get("uuid"),
@@ -139,8 +155,12 @@ async def _fetch_nearest_stations(
 ) -> dict:
     """Fetch stations around a coordinate, sorted nearest-first."""
     if radius_km <= 0:
+        logger.warning(
+            "nearest stations: rejected radius_km=%s (must be > 0)", radius_km
+        )
         raise ToolError("radius_km must be greater than 0.")
     if limit < 1:
+        logger.warning("nearest stations: rejected limit=%d (must be >= 1)", limit)
         raise ToolError("limit must be at least 1.")
 
     # The dict API has no radius filter but supports a bounding box and
@@ -186,6 +206,10 @@ async def _fetch_nearest_stations(
     stations.sort(key=lambda s: s["distance_km"])
 
     total = len(stations)
+    logger.info(
+        "nearest stations: %d within %.1f km of (%.4f, %.4f), returning %d",
+        total, radius_km, latitude, longitude, min(total, limit),
+    )
     return {
         "total_matches": total,
         "returned": min(total, limit),
@@ -210,6 +234,10 @@ async def find_nearest_stations(
         radius_km: Search radius in kilometers (default: 25).
         limit: Maximum number of stations to return (default: 10).
     """
+    logger.info(
+        "find_nearest_stations: lat=%s lon=%s radius_km=%s limit=%d",
+        latitude, longitude, radius_km, limit,
+    )
     return await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
 
 @mcp.tool(app=AppConfig(resource_uri=MAP_UI_URI))
@@ -231,6 +259,10 @@ async def show_stations_map(
         radius_km: Search radius in kilometers (default: 25).
         limit: Maximum number of stations to show (default: 50).
     """
+    logger.info(
+        "show_stations_map: lat=%s lon=%s radius_km=%s limit=%d",
+        latitude, longitude, radius_km, limit,
+    )
     result = await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
     return {
         "center": {"latitude": latitude, "longitude": longitude},
@@ -253,6 +285,7 @@ async def show_stations_map(
 )
 def stations_map_ui() -> str:
     """Leaflet map UI rendered inline for the show_stations_map tool."""
+    logger.info("stations_map_ui: serving Leaflet map resource %s", MAP_UI_URI)
     return (Path(__file__).parent / "stations_map.html").read_text(encoding="utf-8")
 
 @mcp.tool()
@@ -263,6 +296,7 @@ async def get_latest_measurements(uuid: str) -> dict:
     Args:
         uuid: The unique identifier (UUID) of the station.
     """
+    logger.info("get_latest_measurements: uuid=%s", uuid)
     url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
     params = {
         "includeTimeseries": "true",
@@ -284,6 +318,10 @@ async def get_latest_measurements(uuid: str) -> dict:
                 "timestamp": curr.get("timestamp"),
                 "state": curr.get("stateMnwMhw") or curr.get("stateNswHsw")
             })
+    logger.info(
+        "get_latest_measurements: uuid=%s -> %d current measurements",
+        uuid, len(measurements),
+    )
 
     return {
         "station": data.get("longname"),
@@ -301,7 +339,12 @@ async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> 
         parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
         count: Number of recent measurements to fetch (default: 2).
     """
+    logger.info(
+        "get_recent_measurements: uuid=%s parameter=%s count=%d",
+        uuid, parameter, count,
+    )
     if count < 1:
+        logger.warning("get_recent_measurements: rejected count=%d (must be >= 1)", count)
         raise ToolError("count must be at least 1.")
 
     url = f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
@@ -312,11 +355,19 @@ async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> 
     window_minutes = max(count * 30, 60)
     data = await get_json(url, params={"start": f"PT{window_minutes}M"})
     if len(data) < count:
+        logger.debug(
+            "get_recent_measurements: %dM window yielded %d < %d, fetching full history",
+            window_minutes, len(data), count,
+        )
         data = await get_json(url)
 
     # The API returns measurements in chronological order, so we take the last 'count' items
     recent = data[-count:] if data else []
     recent.reverse() # Most recent first
+    logger.info(
+        "get_recent_measurements: uuid=%s parameter=%s -> %d measurements",
+        uuid, parameter, len(recent),
+    )
 
     return {
         "uuid": uuid,
@@ -327,32 +378,40 @@ async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> 
 @mcp.resource("water-bodies://list")
 async def list_water_bodies() -> str:
     """List all available water bodies (Gewässer)."""
+    logger.info("list_water_bodies: resource requested")
     cached = cache_get("water-bodies")
     if cached is not None:
+        logger.debug("list_water_bodies: served from cache")
         return cached
     waters = await get_json(f"{OFFICIAL_API_URL}/waters.json")
     result = "\n".join([f"{w['longname']} ({w['shortname']})" for w in waters])
     cache_set("water-bodies", result)
+    logger.info("list_water_bodies: fetched and cached %d water bodies", len(waters))
     return result
 
 @mcp.resource("states://list")
 async def list_states() -> str:
     """List all federal states (Bundesländer) that have stations."""
+    logger.info("list_states: resource requested")
     cached = cache_get("states")
     if cached is not None:
+        logger.debug("list_states: served from cache")
         return cached
     # We fetch all stations from the dict-api to get unique states
     data = await get_json(f"{BASE_URL}/search")
     states = sorted(list(set(s.get("land") for s in data.get("stations", []) if s.get("land"))))
     result = "\n".join(states)
     cache_set("states", result)
+    logger.info("list_states: fetched and cached %d states", len(states))
     return result
 
 @mcp.resource("states://{state}/stations")
 async def list_stations_in_state(state: str) -> str:
     """List all stations in a specific federal state."""
+    logger.info("list_stations_in_state: state=%s", state)
     data = await get_json(f"{BASE_URL}/search", params={"land": state})
     stations = data.get("stations", [])
+    logger.info("list_stations_in_state: state=%s -> %d stations", state, len(stations))
     return "\n".join([f"{s['longname']} (UUID: {s['uuid']}, Gewässer: {s['water']['longname']})" for s in stations])
 
 @mcp.custom_route("/healthz", methods=["GET"])
@@ -362,6 +421,9 @@ async def healthz(request: Request) -> PlainTextResponse:
     The MCP endpoint (/mcp) requires a JSON-RPC handshake, so it is unsuitable
     as an LB health check. This lightweight route returns 200 OK instead.
     """
+    # DEBUG only: the LB polls this frequently and uvicorn's access log already
+    # records each hit, so INFO here would be pure noise.
+    logger.debug("healthz: liveness probe")
     return PlainTextResponse("ok")
 
 
