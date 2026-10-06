@@ -2,11 +2,11 @@ import logging
 import math
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.apps import UI_MIME_TYPE, AppConfig, ResourceCSP
-from fastmcp.exceptions import ToolError
+from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
@@ -55,20 +55,25 @@ OFFICIAL_API_URL = os.environ.get(
 
 MAP_UI_URI = "ui://pegelonline-dict/stations-map"
 
+# Declarative argument constraints: FastMCP validates them before the tool
+# runs and publishes them in the tool input schema.
+Count = Annotated[int, Field(ge=1)]
+RadiusKm = Annotated[float, Field(gt=0)]
+
 
 @mcp.tool()
 async def search_stations(
-    station: Optional[str] = None,
-    gewaesser: Optional[str] = None,
-    agency: Optional[str] = None,
-    land: Optional[str] = None,
-    country: Optional[str] = None,
-    einzugsgebiet: Optional[str] = None,
-    kreis: Optional[str] = None,
-    parameter: Optional[str] = None,
-    bbox: Optional[str] = None,
-    q: Optional[str] = None,
-    limit: int = 50
+    station: str | None = None,
+    gewaesser: str | None = None,
+    agency: str | None = None,
+    land: str | None = None,
+    country: str | None = None,
+    einzugsgebiet: str | None = None,
+    kreis: str | None = None,
+    parameter: str | None = None,
+    bbox: str | None = None,
+    q: str | None = None,
+    limit: Count = 50
 ) -> dict:
     """
     Search for Pegelonline stations using various optional parameters.
@@ -103,10 +108,6 @@ async def search_stations(
     # Remove None values
     params = {k: v for k, v in params.items() if v is not None}
     logger.info("search_stations: filters=%s limit=%d", params, limit)
-
-    if limit < 1:
-        logger.warning("search_stations: rejected limit=%d (must be >= 1)", limit)
-        raise ToolError("limit must be at least 1.")
 
     data = await get_json(f"{BASE_URL}/search", params=params)
     stations = data.get("stations", [])
@@ -181,15 +182,6 @@ async def _fetch_nearest_stations(
     latitude: float, longitude: float, radius_km: float, limit: int
 ) -> dict:
     """Fetch stations around a coordinate, sorted nearest-first."""
-    if radius_km <= 0:
-        logger.warning(
-            "nearest stations: rejected radius_km=%s (must be > 0)", radius_km
-        )
-        raise ToolError("radius_km must be greater than 0.")
-    if limit < 1:
-        logger.warning("nearest stations: rejected limit=%d (must be >= 1)", limit)
-        raise ToolError("limit must be at least 1.")
-
     # The dict API has no radius filter but supports a bounding box and
     # enriches each station with its MQTT topic and timeseries. Query the
     # box enclosing the radius, then filter precisely by distance.
@@ -248,8 +240,8 @@ async def _fetch_nearest_stations(
 async def find_nearest_stations(
     latitude: float,
     longitude: float,
-    radius_km: float = 25,
-    limit: int = 10
+    radius_km: RadiusKm = 25,
+    limit: Count = 10
 ) -> dict:
     """
     Find gauge stations near a geographic coordinate, sorted by distance
@@ -271,8 +263,8 @@ async def find_nearest_stations(
 async def show_stations_map(
     latitude: float,
     longitude: float,
-    radius_km: float = 25,
-    limit: int = 50
+    radius_km: RadiusKm = 25,
+    limit: Count = 50
 ) -> dict:
     """
     Show an interactive map of all gauge stations within a search radius
@@ -357,7 +349,7 @@ async def get_latest_measurements(uuid: str) -> dict:
     }
 
 @mcp.tool()
-async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> dict:
+async def get_recent_measurements(uuid: str, parameter: str, count: Count = 2) -> dict:
     """
     Fetch the most recent measurements for a specific parameter of a station.
 
@@ -370,10 +362,6 @@ async def get_recent_measurements(uuid: str, parameter: str, count: int = 2) -> 
         "get_recent_measurements: uuid=%s parameter=%s count=%d",
         uuid, parameter, count,
     )
-    if count < 1:
-        logger.warning("get_recent_measurements: rejected count=%d (must be >= 1)", count)
-        raise ToolError("count must be at least 1.")
-
     url = f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
 
     # Measurements are typically spaced 15 minutes apart. Request a window

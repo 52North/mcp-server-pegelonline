@@ -155,3 +155,21 @@ async def test_invalid_arguments_are_rejected(client, respx_mock, tool, argument
     # becomes declarative (refactoring step 2).
     with pytest.raises(ToolError):
         await client.call_tool(tool, arguments)
+
+
+@pytest.mark.parametrize(
+    ("tool", "argument", "constraint"),
+    [
+        ("search_stations", "limit", {"minimum": 1}),
+        ("find_nearest_stations", "limit", {"minimum": 1}),
+        ("find_nearest_stations", "radius_km", {"exclusiveMinimum": 0}),
+        ("show_stations_map", "limit", {"minimum": 1}),
+        ("show_stations_map", "radius_km", {"exclusiveMinimum": 0}),
+        ("get_recent_measurements", "count", {"minimum": 1}),
+    ],
+)
+async def test_constraints_in_tool_schema(client, tool, argument, constraint):
+    tools = {t.name: t for t in await client.list_tools()}
+    schema = tools[tool].inputSchema["properties"][argument]
+
+    assert constraint.items() <= schema.items()
