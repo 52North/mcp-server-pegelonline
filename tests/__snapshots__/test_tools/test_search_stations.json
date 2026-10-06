@@ -6,6 +6,7 @@
     "edis/pegelonline/+/+/+/+/00000000-0000-0000-0000-000000000000/+"
   ],
   "pegelonlinelinks": [
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/593647aa-9fea-43ec-a7d6-6476a76ae868/W/measurements.json",
     "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q/measurements.json",
     "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W/measurements.json",
     "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/8f7e5f92-1153-4f93-acba-ca48670c8ca9/Q/measurements.json",

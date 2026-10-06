@@ -11,6 +11,7 @@ from starlette.responses import PlainTextResponse
 
 from geo import bbox_around, haversine_km
 from helpers import cache_get, cache_set, configure_logging, get_json
+from mapping import normalize_timeseries, parameter_info, station_summary, water_name
 
 # Share the application logger namespace with helpers.py so a single log-config
 # entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
@@ -131,8 +132,8 @@ async def search_stations(
         "pegelonlinelinks": [
             ts["pegelonlinelink"]
             for s in stations
-            for ts in (s.get("timeseries") or [])
-            if isinstance(ts, dict) and ts.get("pegelonlinelink")
+            for ts in normalize_timeseries(s)
+            if ts.get("pegelonlinelink")
         ],
     }
 
@@ -152,13 +153,11 @@ async def get_station_info(uuid: str) -> dict:
 
     parameters = [
         {
-            "shortname": ts.get("shortname"),
-            "longname": ts.get("longname"),
-            "unit": ts.get("unit"),
+            **parameter_info(ts),
             "equidistance_minutes": ts.get("equidistance"),
             "gaugeZero": ts.get("gaugeZero"),
         }
-        for ts in data.get("timeseries", [])
+        for ts in normalize_timeseries(data)
     ]
     logger.info(
         "get_station_info: uuid=%s -> %s (%d parameters)",
@@ -174,7 +173,7 @@ async def get_station_info(uuid: str) -> dict:
         "longitude": data.get("longitude"),
         "latitude": data.get("latitude"),
         "km": data.get("km"),
-        "water": data.get("water", {}).get("longname"),
+        "water": water_name(data),
         "parameters": parameters,
     }
 
@@ -196,28 +195,7 @@ async def _fetch_nearest_stations(
         distance = haversine_km(latitude, longitude, s["latitude"], s["longitude"])
         if distance > radius_km:
             continue
-        timeseries = s.get("timeseries") or []
-        if isinstance(timeseries, dict):
-            timeseries = [timeseries]
-        stations.append({
-            "uuid": s.get("uuid"),
-            "shortname": s.get("shortname"),
-            "longname": s.get("longname"),
-            "agency": s.get("agency"),
-            "water": (s.get("water") or {}).get("longname"),
-            "latitude": s.get("latitude"),
-            "longitude": s.get("longitude"),
-            "distance_km": round(distance, 2),
-            "mqtttopic": s.get("mqtttopic"),
-            "parameters": [
-                {
-                    "shortname": ts.get("shortname"),
-                    "longname": ts.get("longname"),
-                    "unit": ts.get("unit"),
-                }
-                for ts in timeseries
-            ],
-        })
+        stations.append({**station_summary(s), "distance_km": round(distance, 2)})
     stations.sort(key=lambda s: s["distance_km"])
 
     total = len(stations)
@@ -322,7 +300,7 @@ async def get_latest_measurements(uuid: str) -> dict:
 
     # Clean up the response to only return relevant measurement data
     measurements = []
-    for ts in data.get("timeseries", []):
+    for ts in normalize_timeseries(data):
         curr = ts.get("currentMeasurement")
         if curr:
             measurements.append({
@@ -340,7 +318,7 @@ async def get_latest_measurements(uuid: str) -> dict:
 
     return {
         "station": data.get("longname"),
-        "water": data.get("water", {}).get("longname"),
+        "water": water_name(data),
         "measurements": measurements
     }
 
@@ -423,7 +401,16 @@ async def list_stations_in_state(state: str) -> str:
     data = await get_json(f"{BASE_URL}/search", params={"land": state})
     stations = data.get("stations", [])
     logger.info("list_stations_in_state: state=%s -> %d stations", state, len(stations))
-    return "\n".join([f"{s['longname']} (UUID: {s['uuid']}, Gewässer: {s['water']['longname']})" for s in stations])
+    return "\n".join(_station_line(s) for s in stations)
+
+
+def _station_line(station: dict) -> str:
+    """One line of the station list; the water body is omitted if unknown."""
+    details = f"UUID: {station.get('uuid')}"
+    water = water_name(station)
+    if water:
+        details += f", Gewässer: {water}"
+    return f"{station.get('longname')} ({details})"
 
 @mcp.custom_route("/healthz", methods=["GET"])
 async def healthz(request: Request) -> PlainTextResponse:

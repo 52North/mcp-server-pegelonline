@@ -1,7 +1,5 @@
 """Smoke tests for the MCP resources against mocked upstream APIs."""
 
-import pytest
-
 from conftest import SEARCH_URL, WATERS_URL, load_fixture
 from server import MAP_UI_URI
 
@@ -53,7 +51,6 @@ async def test_list_stations_in_state(client, respx_mock, snapshot_json):
     assert text == snapshot_json
 
 
-@pytest.mark.xfail(strict=True, reason="KeyError on missing 'water', fixed in refactoring step 4")
 async def test_list_stations_in_state_without_water(client, respx_mock):
     data = load_fixture("search_hamburg")
     del data["stations"][0]["water"]
@@ -61,7 +58,9 @@ async def test_list_stations_in_state_without_water(client, respx_mock):
 
     text = await read_text(client, "states://Hamburg/stations")
 
-    assert len(text.splitlines()) == 3
+    lines = text.splitlines()
+    assert len(lines) == 3
+    assert lines[0] == "ALTENGAMME (UUID: 2ee12b9a-f7fd-4856-82b9-6bdd850c2bba)"
 
 
 async def test_stations_map_ui(client):
