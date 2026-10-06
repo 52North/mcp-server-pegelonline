@@ -1,5 +1,4 @@
 import logging
-import math
 import os
 from pathlib import Path
 from typing import Annotated
@@ -10,7 +9,8 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from helpers import cache_get, cache_set, configure_logging, get_json, haversine_km
+from geo import bbox_around, haversine_km
+from helpers import cache_get, cache_set, configure_logging, get_json
 
 # Share the application logger namespace with helpers.py so a single log-config
 # entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
@@ -185,12 +185,8 @@ async def _fetch_nearest_stations(
     # The dict API has no radius filter but supports a bounding box and
     # enriches each station with its MQTT topic and timeseries. Query the
     # box enclosing the radius, then filter precisely by distance.
-    dlat = radius_km / 111.32
-    dlon = radius_km / (111.32 * math.cos(math.radians(latitude)))
-    bbox = (
-        f"{longitude - dlon},{latitude - dlat},"
-        f"{longitude + dlon},{latitude + dlat}"
-    )
+    min_lon, min_lat, max_lon, max_lat = bbox_around(latitude, longitude, radius_km)
+    bbox = f"{min_lon},{min_lat},{max_lon},{max_lat}"
     data = await get_json(f"{BASE_URL}/search", params={"bbox": bbox})
 
     stations = []

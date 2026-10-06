@@ -1,7 +1,6 @@
 """Shared HTTP and caching helpers for the Pegelonline Dict API MCP server."""
 
 import logging
-import math
 import os
 import sys
 import time
@@ -50,16 +49,6 @@ def cache_get(key: str) -> Any:
 
 def cache_set(key: str, value: Any) -> None:
     _cache[key] = (time.monotonic(), value)
-
-
-def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance between two WGS84 coordinates in kilometers."""
-    earth_radius_km = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * earth_radius_km * math.asin(math.sqrt(a))
 
 
 async def get_json(url: str, params: Optional[dict] = None) -> Any:
