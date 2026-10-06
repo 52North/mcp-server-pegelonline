@@ -1,0 +1,48 @@
+{
+  "returned": 2,
+  "stations": [
+    {
+      "agency": "STANDORT KÖLN",
+      "distance_km": 0.41,
+      "latitude": 50.936949,
+      "longitude": 6.9633,
+      "longname": "KÖLN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+",
+      "parameters": [
+        {
+          "longname": "ABFLUSS_ROHDATEN",
+          "shortname": "Q",
+          "unit": "m³/s"
+        },
+        {
+          "longname": "WASSERSTAND ROHDATEN",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "shortname": "KÖLN",
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "water": "RHEIN"
+    },
+    {
+      "agency": "STANDORT KÖLN",
+      "distance_km": 24.91,
+      "latitude": 50.736398,
+      "longitude": 7.108045,
+      "longname": "BONN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+",
+      "parameters": [
+        {
+          "longname": "WASSERSTAND ROHDATEN",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "shortname": "BONN",
+      "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
+      "water": "RHEIN"
+    }
+  ],
+  "total_matches": 2,
+  "truncated": false
+}

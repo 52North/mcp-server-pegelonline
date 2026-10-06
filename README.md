@@ -38,6 +38,12 @@ To run the server normally:
 uv run python server.py
 ```
 
+To run the tests (upstream APIs are mocked; tool responses are compared against
+JSON snapshots in `tests/__snapshots__/`, refresh them with `--snapshot-update`):
+```bash
+uv run pytest
+```
+
 ### Registering with Gemini CLI
 
 To use this server with Gemini CLI, register it with the following command:

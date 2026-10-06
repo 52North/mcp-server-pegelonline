@@ -1,0 +1,76 @@
+{
+  "center": {
+    "latitude": 50.94,
+    "longitude": 6.96
+  },
+  "radius_km": 50.0,
+  "returned": 3,
+  "stations": [
+    {
+      "agency": "STANDORT KÖLN",
+      "distance_km": 0.41,
+      "latitude": 50.936949,
+      "longitude": 6.9633,
+      "longname": "KÖLN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+",
+      "parameters": [
+        {
+          "longname": "ABFLUSS_ROHDATEN",
+          "shortname": "Q",
+          "unit": "m³/s"
+        },
+        {
+          "longname": "WASSERSTAND ROHDATEN",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "shortname": "KÖLN",
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "water": "RHEIN"
+    },
+    {
+      "agency": "STANDORT KÖLN",
+      "distance_km": 24.91,
+      "latitude": 50.736398,
+      "longitude": 7.108045,
+      "longname": "BONN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+",
+      "parameters": [
+        {
+          "longname": "WASSERSTAND ROHDATEN",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "shortname": "BONN",
+      "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
+      "water": "RHEIN"
+    },
+    {
+      "agency": "STANDORT DUISBURG",
+      "distance_km": 34.41,
+      "latitude": 51.225498,
+      "longitude": 6.769891,
+      "longname": "DÜSSELDORF",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/8f7e5f92-1153-4f93-acba-ca48670c8ca9/+",
+      "parameters": [
+        {
+          "longname": "ABFLUSS_ROHDATEN",
+          "shortname": "Q",
+          "unit": "m³/s"
+        },
+        {
+          "longname": "WASSERSTAND ROHDATEN",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "shortname": "DÜSSELDORF",
+      "uuid": "8f7e5f92-1153-4f93-acba-ca48670c8ca9",
+      "water": "RHEIN"
+    }
+  ],
+  "total_matches": 3,
+  "truncated": false
+}

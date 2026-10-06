@@ -1,0 +1,22 @@
+{
+  "measurements": [
+    {
+      "parameter": "ABFLUSS_ROHDATEN",
+      "shortname": "Q",
+      "state": null,
+      "timestamp": "2026-10-06T09:45:00+02:00",
+      "unit": "m³/s",
+      "value": 577.0
+    },
+    {
+      "parameter": "WASSERSTAND ROHDATEN",
+      "shortname": "W",
+      "state": "low",
+      "timestamp": "2026-10-06T13:45:00+02:00",
+      "unit": "cm",
+      "value": 48.0
+    }
+  ],
+  "station": "KÖLN",
+  "water": "RHEIN"
+}

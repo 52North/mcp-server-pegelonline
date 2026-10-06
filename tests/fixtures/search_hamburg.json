@@ -1,0 +1,122 @@
+{
+  "mqtttopics": [
+    "edis/pegelonline/+/+/+/+/2ee12b9a-f7fd-4856-82b9-6bdd850c2bba/+",
+    "edis/pegelonline/+/+/+/+/3de8ea26-ab29-4e46-adad-06198ba2e0b7/+",
+    "edis/pegelonline/+/+/+/+/ae1b91d0-e746-4f65-9f64-2d2e23603a82/+"
+  ],
+  "pegelonlinelinks": [
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/2ee12b9a-f7fd-4856-82b9-6bdd850c2bba/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/3de8ea26-ab29-4e46-adad-06198ba2e0b7/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/ae1b91d0-e746-4f65-9f64-2d2e23603a82/W/measurements.json"
+  ],
+  "stations": [
+    {
+      "uuid": "2ee12b9a-f7fd-4856-82b9-6bdd850c2bba",
+      "number": "5930070",
+      "shortname": "ALTENGAMME",
+      "longname": "ALTENGAMME",
+      "km": 588.787,
+      "agency": "STANDORT LAUENBURG",
+      "longitude": 10.29679,
+      "latitude": 53.430844,
+      "voiceServiceNumber": "+49228 286527 108",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 1,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": -5.021,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/2ee12b9a-f7fd-4856-82b9-6bdd850c2bba/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/2ee12b9a-f7fd-4856-82b9-6bdd850c2bba/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Hamburg",
+      "kreis": "Hamburg",
+      "city": "Hamburg",
+      "einzugsgebiet": "Elbe",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/2ee12b9a-f7fd-4856-82b9-6bdd850c2bba/+"
+    },
+    {
+      "uuid": "3de8ea26-ab29-4e46-adad-06198ba2e0b7",
+      "number": "5930090",
+      "shortname": "ZOLLENSPIEKER",
+      "longname": "ZOLLENSPIEKER",
+      "km": 598.159,
+      "agency": "STANDORT LAUENBURG",
+      "longitude": 10.185374,
+      "latitude": 53.398709,
+      "voiceServiceNumber": "+49228 286527 109",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 1,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": -5.036,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/3de8ea26-ab29-4e46-adad-06198ba2e0b7/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/3de8ea26-ab29-4e46-adad-06198ba2e0b7/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Hamburg",
+      "kreis": "Hamburg",
+      "city": "Hamburg",
+      "einzugsgebiet": "Elbe",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/3de8ea26-ab29-4e46-adad-06198ba2e0b7/+"
+    },
+    {
+      "uuid": "ae1b91d0-e746-4f65-9f64-2d2e23603a82",
+      "number": "5952020",
+      "shortname": "BUNTHAUS",
+      "longname": "BUNTHAUS",
+      "km": 609.9,
+      "agency": "HAMBURG PORT AUTHORITY",
+      "longitude": 10.064018,
+      "latitude": 53.461414,
+      "voiceServiceNumber": "+49228 286527 111",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 1,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": -5.017,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/ae1b91d0-e746-4f65-9f64-2d2e23603a82/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/ae1b91d0-e746-4f65-9f64-2d2e23603a82/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Hamburg",
+      "kreis": "Hamburg",
+      "city": "Hamburg",
+      "einzugsgebiet": "Elbe",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/ae1b91d0-e746-4f65-9f64-2d2e23603a82/+"
+    }
+  ]
+}

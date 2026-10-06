@@ -1,0 +1,97 @@
+{
+  "mqtttopics": [
+    "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+",
+    "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+"
+  ],
+  "pegelonlinelinks": [
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W/measurements.json"
+  ],
+  "returned": 2,
+  "stations": [
+    {
+      "agency": "STANDORT KÖLN",
+      "city": "Bonn",
+      "country": "Deutschland",
+      "einzugsgebiet": "Rhein",
+      "km": 654.8,
+      "kreis": "Bonn",
+      "land": "Nordrhein-Westfalen",
+      "latitude": 50.736398,
+      "longitude": 7.108045,
+      "longname": "BONN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+",
+      "number": "2710080",
+      "shortname": "BONN",
+      "timeseries": {
+        "equidistance": 15,
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "validFrom": "2019-11-01",
+          "value": 42.713
+        },
+        "longname": "WASSERSTAND ROHDATEN",
+        "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/W",
+        "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/593647aa-9fea-43ec-a7d6-6476a76ae868/W/measurements.json",
+        "shortname": "W",
+        "unit": "cm"
+      },
+      "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
+      "voiceServiceNumber": "+49228 286527 566",
+      "water": {
+        "longname": "RHEIN",
+        "shortname": "RHEIN"
+      }
+    },
+    {
+      "agency": "STANDORT KÖLN",
+      "city": "Köln",
+      "country": "Deutschland",
+      "einzugsgebiet": "Rhein",
+      "km": 688,
+      "kreis": "Köln",
+      "land": "Nordrhein-Westfalen",
+      "latitude": 50.936949,
+      "longitude": 6.9633,
+      "longname": "KÖLN",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+",
+      "number": "2730010",
+      "shortname": "KÖLN",
+      "timeseries": [
+        {
+          "comment": {
+            "longDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
+            "shortDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich"
+          },
+          "equidistance": 15,
+          "longname": "ABFLUSS_ROHDATEN",
+          "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q/measurements.json",
+          "shortname": "Q",
+          "unit": "m³/s"
+        },
+        {
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "validFrom": "2019-11-01",
+            "value": 35.038
+          },
+          "longname": "WASSERSTAND ROHDATEN",
+          "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W/measurements.json",
+          "shortname": "W",
+          "unit": "cm"
+        }
+      ],
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "voiceServiceNumber": "+49228 286527 567",
+      "water": {
+        "longname": "RHEIN",
+        "shortname": "RHEIN"
+      }
+    }
+  ],
+  "total_matches": 4,
+  "truncated": true
+}

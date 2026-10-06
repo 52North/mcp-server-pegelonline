@@ -1,0 +1,31 @@
+{
+  "agency": "STANDORT KÖLN",
+  "km": 688.0,
+  "latitude": 50.936949,
+  "longitude": 6.9633,
+  "longname": "KÖLN",
+  "number": "2730010",
+  "parameters": [
+    {
+      "equidistance_minutes": 15,
+      "gaugeZero": null,
+      "longname": "ABFLUSS_ROHDATEN",
+      "shortname": "Q",
+      "unit": "m³/s"
+    },
+    {
+      "equidistance_minutes": 15,
+      "gaugeZero": {
+        "unit": "m. ü. NHN",
+        "validFrom": "2019-11-01",
+        "value": 35.038
+      },
+      "longname": "WASSERSTAND ROHDATEN",
+      "shortname": "W",
+      "unit": "cm"
+    }
+  ],
+  "shortname": "KÖLN",
+  "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+  "water": "RHEIN"
+}

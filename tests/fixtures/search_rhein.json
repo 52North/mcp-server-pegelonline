@@ -1,0 +1,195 @@
+{
+  "mqtttopics": [
+    "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+",
+    "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+",
+    "edis/pegelonline/+/+/+/+/8f7e5f92-1153-4f93-acba-ca48670c8ca9/+",
+    "edis/pegelonline/+/+/+/+/00000000-0000-0000-0000-000000000000/+"
+  ],
+  "pegelonlinelinks": [
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/593647aa-9fea-43ec-a7d6-6476a76ae868/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/8f7e5f92-1153-4f93-acba-ca48670c8ca9/Q/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/8f7e5f92-1153-4f93-acba-ca48670c8ca9/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/00000000-0000-0000-0000-000000000000/Q/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/00000000-0000-0000-0000-000000000000/W/measurements.json"
+  ],
+  "stations": [
+    {
+      "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
+      "number": "2710080",
+      "shortname": "BONN",
+      "longname": "BONN",
+      "km": 654.8,
+      "agency": "STANDORT KÖLN",
+      "longitude": 7.108045,
+      "latitude": 50.736398,
+      "voiceServiceNumber": "+49228 286527 566",
+      "water": {
+        "shortname": "RHEIN",
+        "longname": "RHEIN"
+      },
+      "timeseries": {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 42.713,
+          "validFrom": "2019-11-01"
+        },
+        "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/W",
+        "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/593647aa-9fea-43ec-a7d6-6476a76ae868/W/measurements.json"
+      },
+      "country": "Deutschland",
+      "land": "Nordrhein-Westfalen",
+      "kreis": "Bonn",
+      "city": "Bonn",
+      "einzugsgebiet": "Rhein",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/593647aa-9fea-43ec-a7d6-6476a76ae868/+"
+    },
+    {
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "number": "2730010",
+      "shortname": "KÖLN",
+      "longname": "KÖLN",
+      "km": 688,
+      "agency": "STANDORT KÖLN",
+      "longitude": 6.9633,
+      "latitude": 50.936949,
+      "voiceServiceNumber": "+49228 286527 567",
+      "water": {
+        "shortname": "RHEIN",
+        "longname": "RHEIN"
+      },
+      "timeseries": [
+        {
+          "shortname": "Q",
+          "longname": "ABFLUSS_ROHDATEN",
+          "unit": "m³/s",
+          "equidistance": 15,
+          "comment": {
+            "shortDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
+            "longDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/Q/measurements.json"
+        },
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 35.038,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Nordrhein-Westfalen",
+      "kreis": "Köln",
+      "city": "Köln",
+      "einzugsgebiet": "Rhein",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/a6ee8177-107b-47dd-bcfd-30960ccc6e9c/+"
+    },
+    {
+      "uuid": "8f7e5f92-1153-4f93-acba-ca48670c8ca9",
+      "number": "2750010",
+      "shortname": "DÜSSELDORF",
+      "longname": "DÜSSELDORF",
+      "km": 744.2,
+      "agency": "STANDORT DUISBURG",
+      "longitude": 6.769891,
+      "latitude": 51.225498,
+      "voiceServiceNumber": "+49228 286527 568",
+      "water": {
+        "shortname": "RHEIN",
+        "longname": "RHEIN"
+      },
+      "timeseries": [
+        {
+          "shortname": "Q",
+          "longname": "ABFLUSS_ROHDATEN",
+          "unit": "m³/s",
+          "equidistance": 15,
+          "comment": {
+            "shortDescription": "Abflussermittlung unter W = 1cm aktuell nicht möglich",
+            "longDescription": "Abflussermittlung unter W = 1cm aktuell nicht möglich"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/8f7e5f92-1153-4f93-acba-ca48670c8ca9/Q",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/8f7e5f92-1153-4f93-acba-ca48670c8ca9/Q/measurements.json"
+        },
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 24.529,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/8f7e5f92-1153-4f93-acba-ca48670c8ca9/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/8f7e5f92-1153-4f93-acba-ca48670c8ca9/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Nordrhein-Westfalen",
+      "kreis": "Düsseldorf",
+      "city": "Düsseldorf",
+      "einzugsgebiet": "Rhein",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/8f7e5f92-1153-4f93-acba-ca48670c8ca9/+"
+    },
+    {
+      "uuid": "00000000-0000-0000-0000-000000000000",
+      "number": "0",
+      "shortname": "OHNE KOORDINATEN",
+      "longname": "OHNE KOORDINATEN",
+      "km": 688,
+      "agency": "STANDORT KÖLN",
+      "voiceServiceNumber": "+49228 286527 567",
+      "water": {
+        "shortname": "RHEIN",
+        "longname": "RHEIN"
+      },
+      "timeseries": [
+        {
+          "shortname": "Q",
+          "longname": "ABFLUSS_ROHDATEN",
+          "unit": "m³/s",
+          "equidistance": 15,
+          "comment": {
+            "shortDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
+            "longDescription": "Abflussermittlung unter W = 50cm aktuell nicht möglich"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/00000000-0000-0000-0000-000000000000/Q",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/00000000-0000-0000-0000-000000000000/Q/measurements.json"
+        },
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 35.038,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/00000000-0000-0000-0000-000000000000/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/00000000-0000-0000-0000-000000000000/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "land": "Nordrhein-Westfalen",
+      "kreis": "Köln",
+      "city": "Köln",
+      "einzugsgebiet": "Rhein",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/00000000-0000-0000-0000-000000000000/+"
+    }
+  ]
+}
