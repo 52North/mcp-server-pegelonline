@@ -15,3 +15,5 @@ packaging/*.tar.gz
 packaging/RPMS/
 packaging/dist/
 packaging/*-bom.json
+
+.vscode

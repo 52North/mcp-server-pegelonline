@@ -19,7 +19,8 @@ Backlog of technical and functional enhancements for the Pegelonline Dict API MC
 | 11 | Open | Add `ruff` (lint) and `mypy`/`pyright` (types) as dev dependencies | Low effort |
 | 12 | Open | Add a GitHub Actions CI workflow: `uv sync` → ruff → pytest on push/PR | Low/medium effort, depends on #10/#11 |
 | 13 | ✅ Done | Add structured `logging` for outgoing requests/responses to ease debugging tool calls made through Claude | Logs method/URL/params, status and duration to stderr; level configurable via `LOG_LEVEL` |
-| 14 | Open | Add a `LICENSE` file — currently missing | Trivial |
+| 14 | ✅ Done | Add a `LICENSE` file — currently missing | [LICENSE](LICENSE) added |
+| 15 | ✅ Done | Add server-wide `instructions` to the `FastMCP` server — guide tool selection and value interpretation beyond the per-tool docstrings | Sent on `initialize`; covers coverage limits (federal waterways only), the search → uuid → measurements workflow, coordinate resolution, gauge zero vs. m+NN, unreliable `Q` at low water, raw-data noise |
 
 ## Functional enhancements (new tools/resources)
 
