@@ -9,7 +9,8 @@ from fastmcp import Client
 from syrupy.extensions.json import JSONSnapshotExtension
 
 import helpers
-from server import BASE_URL, OFFICIAL_API_URL, mcp
+from client import BASE_URL, OFFICIAL_API_URL
+from server import mcp
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

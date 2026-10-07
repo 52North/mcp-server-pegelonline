@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import Annotated
 
@@ -9,8 +8,9 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+import client
 from geo import bbox_around, haversine_km
-from helpers import cache_get, cache_set, configure_logging, get_json
+from helpers import cache_get, cache_set, configure_logging
 from mapping import normalize_timeseries, parameter_info, station_summary, water_name
 
 # Share the application logger namespace with helpers.py so a single log-config
@@ -46,13 +46,6 @@ Interpreting values:
 
 # Initialize FastMCP server
 mcp = FastMCP("Pegelonline Dict API", instructions=INSTRUCTIONS)
-
-BASE_URL = os.environ.get(
-    "PEGELONLINE_DICT_API_URL", "https://dict-api.pegelonline.wsv.de"
-).rstrip("/")
-OFFICIAL_API_URL = os.environ.get(
-    "PEGELONLINE_API_URL", "https://pegelonline.wsv.de/webservices/rest-api/v2"
-).rstrip("/")
 
 MAP_UI_URI = "ui://pegelonline-dict/stations-map"
 
@@ -110,8 +103,7 @@ async def search_stations(
     params = {k: v for k, v in params.items() if v is not None}
     logger.info("search_stations: filters=%s limit=%d", params, limit)
 
-    data = await get_json(f"{BASE_URL}/search", params=params)
-    stations = data.get("stations", [])
+    stations = await client.search(params)
     total = len(stations)
     truncated = total > limit
     if truncated:
@@ -148,8 +140,7 @@ async def get_station_info(uuid: str) -> dict:
         uuid: The unique identifier (UUID) of the station.
     """
     logger.info("get_station_info: uuid=%s", uuid)
-    url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
-    data = await get_json(url, params={"includeTimeseries": "true"})
+    data = await client.fetch_station(uuid)
 
     parameters = [
         {
@@ -186,10 +177,8 @@ async def _fetch_nearest_stations(
     # box enclosing the radius, then filter precisely by distance.
     min_lon, min_lat, max_lon, max_lat = bbox_around(latitude, longitude, radius_km)
     bbox = f"{min_lon},{min_lat},{max_lon},{max_lat}"
-    data = await get_json(f"{BASE_URL}/search", params={"bbox": bbox})
-
     stations = []
-    for s in data.get("stations", []):
+    for s in await client.search({"bbox": bbox}):
         if s.get("latitude") is None or s.get("longitude") is None:
             continue
         distance = haversine_km(latitude, longitude, s["latitude"], s["longitude"])
@@ -290,13 +279,7 @@ async def get_latest_measurements(uuid: str) -> dict:
         uuid: The unique identifier (UUID) of the station.
     """
     logger.info("get_latest_measurements: uuid=%s", uuid)
-    url = f"{OFFICIAL_API_URL}/stations/{uuid}.json"
-    params = {
-        "includeTimeseries": "true",
-        "includeCurrentMeasurement": "true"
-    }
-
-    data = await get_json(url, params=params)
+    data = await client.fetch_station(uuid, current=True)
 
     # Clean up the response to only return relevant measurement data
     measurements = []
@@ -336,23 +319,7 @@ async def get_recent_measurements(uuid: str, parameter: str, count: Count = 2) -
         "get_recent_measurements: uuid=%s parameter=%s count=%d",
         uuid, parameter, count,
     )
-    url = f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
-
-    # Measurements are typically spaced 15 minutes apart. Request a window
-    # twice that size server-side instead of downloading the full history,
-    # and fall back to the full history if the window has gaps.
-    window_minutes = max(count * 30, 60)
-    data = await get_json(url, params={"start": f"PT{window_minutes}M"})
-    if len(data) < count:
-        logger.debug(
-            "get_recent_measurements: %dM window yielded %d < %d, fetching full history",
-            window_minutes, len(data), count,
-        )
-        data = await get_json(url)
-
-    # The API returns measurements in chronological order, so we take the last 'count' items
-    recent = data[-count:] if data else []
-    recent.reverse() # Most recent first
+    recent = await client.fetch_measurements(uuid, parameter, count)
     logger.info(
         "get_recent_measurements: uuid=%s parameter=%s -> %d measurements",
         uuid, parameter, len(recent),
@@ -372,7 +339,7 @@ async def list_water_bodies() -> str:
     if cached is not None:
         logger.debug("list_water_bodies: served from cache")
         return cached
-    waters = await get_json(f"{OFFICIAL_API_URL}/waters.json")
+    waters = await client.fetch_waters()
     result = "\n".join([f"{w['longname']} ({w['shortname']})" for w in waters])
     cache_set("water-bodies", result)
     logger.info("list_water_bodies: fetched and cached %d water bodies", len(waters))
@@ -387,8 +354,8 @@ async def list_states() -> str:
         logger.debug("list_states: served from cache")
         return cached
     # We fetch all stations from the dict-api to get unique states
-    data = await get_json(f"{BASE_URL}/search")
-    states = sorted(list(set(s.get("land") for s in data.get("stations", []) if s.get("land"))))
+    stations = await client.search()
+    states = sorted(set(s.get("land") for s in stations if s.get("land")))
     result = "\n".join(states)
     cache_set("states", result)
     logger.info("list_states: fetched and cached %d states", len(states))
@@ -398,8 +365,7 @@ async def list_states() -> str:
 async def list_stations_in_state(state: str) -> str:
     """List all stations in a specific federal state."""
     logger.info("list_stations_in_state: state=%s", state)
-    data = await get_json(f"{BASE_URL}/search", params={"land": state})
-    stations = data.get("stations", [])
+    stations = await client.search({"land": state})
     logger.info("list_stations_in_state: state=%s -> %d stations", state, len(stations))
     return "\n".join(_station_line(s) for s in stations)
 
