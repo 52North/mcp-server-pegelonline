@@ -10,13 +10,13 @@ to run it for developing purpose.
 No RHEL host required. From the **repository root** (the build context must be
 the repo root so the app sources are available):
 
-1) Build image with all required app module and packaging files:
+1) Build image with the `pegelonline_mcp` package and all packaging files:
     ```bash
     docker build -f packaging/Dockerfile -t edis/mcp-rpm-build .
     ```
 2) Run the container and mount a volume for build output.
     ```bash
-    docker run -it -v "$PWD/dist:/app/packaging/RPMS" edis/mcp-rpm-builder
+    docker run -it -v "$PWD/dist:/app/packaging/RPMS" edis/mcp-rpm-build
     ```
 3) Inside the container run `make -C packaging rpm` to trigger the RPM package build
 
@@ -38,7 +38,7 @@ Override the version/release without editing files:
 `make VERSION=0.2.0 BUILD_NUMBER=2`.
 
 The RPM bundles a self-contained, relocatable virtualenv (`uv venv --relocatable`) plus
-the app modules. Dependencies are installed reproducibly from `packaging/requirements.txt`
+the `pegelonline_mcp` package. Dependencies are installed reproducibly from `packaging/requirements.txt`
 with `uv pip install --require-hashes`.
 
 ## What the RPM installs
@@ -47,7 +47,7 @@ with `uv pip install --require-hashes`.
 |------|-------|-------|
 | `/opt/mcp-server-pegelonline/app/` | root | `pegelonline_mcp/` package (incl. `static/stations_map.html`), openapi json |
 | `/opt/mcp-server-pegelonline/venv/` | root | bundled virtualenv (read-only at runtime) |
-| `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit |
+| `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit (`uvicorn pegelonline_mcp.asgi:app`, working directory `app/`) |
 | `/etc/mcp-server-pegelonline/` (dir) | `mcpsvc` | config dir |
 | `/etc/mcp-server-pegelonline/mcp-server.env` | `mcpsvc` | default env config, `%config(noreplace)`; read by the unit's `EnvironmentFile` |
 | `/etc/mcp-server-pegelonline/log-config.yaml` | `mcpsvc` | uvicorn logging config, `%config(noreplace)`; passed via the unit's `--log-config` |

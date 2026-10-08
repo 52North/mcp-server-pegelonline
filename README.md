@@ -25,17 +25,17 @@ An MCP Server that provides tools to search for gauge stations in Germany using 
 
 To run the server in dev mode (with inspector):
 ```bash
-uv run fastmcp dev inspector server.py
+uv run fastmcp dev inspector pegelonline_mcp/server.py
 ```
 
 To preview the MCP App UI (interactive station map) in the browser:
 ```bash
-uv run fastmcp dev apps server.py
+uv run fastmcp dev apps pegelonline_mcp/server.py
 ```
 
-To run the server normally:
+To run the server normally (stdio transport):
 ```bash
-uv run python server.py
+uv run python -m pegelonline_mcp
 ```
 
 To run the tests (upstream APIs are mocked; tool responses are compared against
@@ -49,7 +49,7 @@ uv run pytest
 To use this server with Gemini CLI, register it with the following command:
 
 ```bash
-gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python server.py
+gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python -m pegelonline_mcp
 ```
 
 *Note: Replace `/path/to/mcp-server-pegelonline-dict-api` with the absolute path to this project's directory.*
@@ -61,7 +61,7 @@ server up automatically when started inside this directory. To register it manua
 (e.g., with user scope):
 
 ```bash
-claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python server.py
+claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python -m pegelonline_mcp
 ```
 
 Note: Claude Code is a CLI and does not render MCP Apps — the `show_stations_map`
@@ -81,7 +81,7 @@ Leaflet map inline. Add the server to `%APPDATA%\Claude\claude_desktop_config.js
       "args": [
         "--directory",
         "/path/to/mcp-server-pegelonline-dict-api",
-        "run", "python", "server.py"
+        "run", "python", "-m", "pegelonline_mcp"
       ]
     }
   }
@@ -99,7 +99,7 @@ using the Streamable HTTP transport:
 
 1. Run the server with HTTP transport:
    ```bash
-   uv run fastmcp run server.py --transport http --port 8000
+   uv run fastmcp run pegelonline_mcp/server.py --transport http --port 8000
    ```
 2. Expose it via a public HTTPS URL (for testing e.g. `cloudflared tunnel --url http://localhost:8000`;
    for production deploy it to a host).
@@ -165,13 +165,13 @@ list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
 - `water-bodies://list`: Returns a list of all available water bodies (Gewässer).
 - `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations.
 - `states://{state}/stations`: Returns a list of all stations within a specific federal state (e.g., `states://Nordrhein-Westfalen/stations`).
-- `ui://pegelonline-dict/stations-map`: Leaflet map UI (`stations_map.html`) rendered inline by MCP-Apps-capable clients for the `show_stations_map` tool.
+- `ui://pegelonline-dict/stations-map`: Leaflet map UI (`pegelonline_mcp/static/stations_map.html`) rendered inline by MCP-Apps-capable clients for the `show_stations_map` tool.
 
 ## Environment variables
 
 - `PEGELONLINE_DICT_API_URL`: Override the Dict API base URL.
 - `PEGELONLINE_API_URL`: Override the official Pegelonline REST API base URL.
-- `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run python server.py`),
+- `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run python -m pegelonline_mcp`),
   written to stderr (default: `INFO`).
 
 ## Logging
@@ -180,7 +180,7 @@ Logs always go to **stderr** in the format `<time> <LEVEL> <logger> <message>`, 
 they never interfere with the stdio JSON-RPC channel and are captured by journald
 in production. The two runtimes are configured differently but share this format:
 
-- **stdio (dev)** — `uv run python server.py` configures logging in-process; tune it
+- **stdio (dev)** — `uv run python -m pegelonline_mcp` configures logging in-process; tune it
   with `LOG_LEVEL`.
 - **HTTP / uvicorn (prod)** — logging is driven by a
   [`--log-config`](https://www.uvicorn.org/settings/#logging) file
@@ -190,5 +190,5 @@ in production. The two runtimes are configured differently but share this format
   effective level in this mode comes from the file, not `LOG_LEVEL`.
 
   ```bash
-  uv run uvicorn main:app --port 8000 --log-config packaging/log-config.yaml
+  uv run uvicorn pegelonline_mcp.asgi:app --port 8000 --log-config packaging/log-config.yaml
   ```
