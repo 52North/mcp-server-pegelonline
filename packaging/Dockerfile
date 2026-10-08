@@ -26,7 +26,8 @@ WORKDIR /app
 # PROJECT_ROOT (packaging/..) and the spec's %install expect. Build context must
 # therefore be the repository root:
 COPY server.py main.py config.py logging_setup.py http_client.py cache.py \
-     client.py geo.py mapping.py stations_map.html \
+     client.py geo.py mapping.py constraints.py tools_stations.py \
+     tools_measurements.py resources.py stations_map.html \
      openapi-pegelonline-dict-api.json \
      LICENSE README.md ROADMAP.md pyproject.toml uv.lock ./
 

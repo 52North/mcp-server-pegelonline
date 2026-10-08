@@ -45,7 +45,7 @@ with `uv pip install --require-hashes`.
 
 | Path | Owner | Notes |
 |------|-------|-------|
-| `/opt/mcp-server-pegelonline/app/` | root | `server.py`, `main.py`, `config.py`, `logging_setup.py`, `http_client.py`, `cache.py`, `client.py`, `geo.py`, `mapping.py`, `stations_map.html`, openapi json |
+| `/opt/mcp-server-pegelonline/app/` | root | `server.py`, `main.py`, `config.py`, `logging_setup.py`, `http_client.py`, `cache.py`, `client.py`, `geo.py`, `mapping.py`, `constraints.py`, `tools_stations.py`, `tools_measurements.py`, `resources.py`, `stations_map.html`, openapi json |
 | `/opt/mcp-server-pegelonline/venv/` | root | bundled virtualenv (read-only at runtime) |
 | `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit |
 | `/etc/mcp-server-pegelonline/` (dir) | `mcpsvc` | config dir |

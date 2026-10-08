@@ -76,7 +76,8 @@ uvx --from "cyclonedx-bom>=7.3.0" cyclonedx-py environment \
 # Application files
 install -d -m 0755 %{buildroot}%{appdir}/app
 install -m 0644 server.py main.py config.py logging_setup.py http_client.py cache.py \
-    client.py geo.py mapping.py stations_map.html \
+    client.py geo.py mapping.py constraints.py tools_stations.py \
+    tools_measurements.py resources.py stations_map.html \
     openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
 
 # systemd unit
