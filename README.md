@@ -132,6 +132,11 @@ Text filters match case-insensitive substrings, also of alternative (e.g.,
 English) names: `land='Sachsen'` also returns stations in Niedersachsen and
 Sachsen-Anhalt.
 
+Each station is returned in compact form: UUID, names, agency, water body,
+coordinates, MQTT topic, observation parameters and its `country`, `land`,
+`kreis` and `einzugsgebiet`, so exact matches can be checked. Further details
+come from `get_station_info`.
+
 ### `get_station_info`
 
 Returns static metadata for a station by `uuid`: names, agency, coordinates,

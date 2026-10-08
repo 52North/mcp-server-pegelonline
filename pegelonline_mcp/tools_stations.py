@@ -19,6 +19,10 @@ from pegelonline_mcp.resources import MAP_UI_URI
 
 logger = logging.getLogger("pegelonline-dict")
 
+# Fields the text filters match on that station_summary leaves out; returned
+# so the model can tell which substring matches it actually wanted.
+FILTER_FIELDS = ("country", "land", "kreis", "einzugsgebiet")
+
 
 async def search_stations(
     station: str | None = None,
@@ -39,6 +43,10 @@ async def search_stations(
     case-insensitive substrings, also of alternative (e.g., English) names:
     land='Sachsen' also returns stations in Niedersachsen and Sachsen-Anhalt,
     so check the returned fields when an exact match matters.
+
+    Each station comes in compact form: uuid, names, agency, water body,
+    coordinates, MQTT topic, observation parameters and the country, land,
+    kreis and einzugsgebiet it lies in. Use get_station_info for details.
 
     Args:
         station: Search by station name (e.g., 'Köln').
@@ -84,15 +92,9 @@ async def search_stations(
         "total_matches": total,
         "returned": len(stations),
         "truncated": truncated,
-        "stations": stations,
-        # Rebuild the aggregated lists from the (possibly truncated) stations
-        # so they stay consistent with the station list.
-        "mqtttopics": [s["mqtttopic"] for s in stations if s.get("mqtttopic")],
-        "pegelonlinelinks": [
-            ts["pegelonlinelink"]
+        "stations": [
+            {**station_summary(s), **{k: s.get(k) for k in FILTER_FIELDS}}
             for s in stations
-            for ts in normalize_timeseries(s)
-            if ts.get("pegelonlinelink")
         ],
     }
 

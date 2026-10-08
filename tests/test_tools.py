@@ -48,8 +48,27 @@ async def test_search_stations_truncated(client, respx_mock, snapshot_json):
     assert data["total_matches"] == 4
     assert data["returned"] == 2
     assert data["truncated"] is True
-    assert len(data["mqtttopics"]) == 2
+    assert len(data["stations"]) == 2
     assert data == snapshot_json
+
+
+async def test_search_stations_is_compact(client, respx_mock):
+    # Recorded land=Sachsen response, raw with alternative names and phone
+    # numbers; the substring search also matched Niedersachsen and Sachsen-Anhalt.
+    respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_sachsen"))
+
+    result = await client.call_tool("search_stations", {"land": "Sachsen"})
+
+    data = result.structured_content
+    stations = data["stations"]
+    # land stays, so the model can still tell the states apart
+    assert [s["land"] for s in stations] == [
+        "Niedersachsen", "Sachsen", "Sachsen", "Sachsen-Anhalt"
+    ]
+    assert not [k for s in stations for k in s if k.endswith("_alternatives")]
+    assert not [s for s in stations if "voiceServiceNumber" in s]
+    assert "mqtttopics" not in data
+    assert "pegelonlinelinks" not in data
 
 
 async def test_get_station_info(client, respx_mock, snapshot_json):
