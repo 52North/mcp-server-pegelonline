@@ -27,7 +27,8 @@ Workflow:
 - Measurement intervals differ per timeseries (equidistance_minutes in
   get_station_info: mostly 15 minutes, often 1 or 60). For a time span, call
   get_recent_measurements with hours (e.g., hours=24) instead of estimating a
-  count; 24 hours of a 1-minute series are 1440 values.
+  count. A span returns at most the 1440 most recent values (24 hours of a
+  1-minute series, 15 days of a 15-minute one); truncated=true marks a cut.
 
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),

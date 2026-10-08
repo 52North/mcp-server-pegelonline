@@ -4,6 +4,8 @@ The structured tool results are frozen as JSON snapshots so later refactoring
 steps can prove the responses stay identical.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
@@ -16,8 +18,11 @@ from conftest import (
     load_fixture,
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
+from pegelonline_mcp.tools_measurements import MAX_SPAN_VALUES
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
+KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
+KOELN_W = {"uuid": KOELN_UUID, "parameter": "W"}
 
 
 async def test_search_stations(client, respx_mock, snapshot_json):
@@ -162,6 +167,27 @@ async def test_get_recent_measurements_by_hours(client, respx_mock):
     assert route.call_count == 1
     assert route.calls.last.request.url.params["start"] == "PT1440M"
     assert result.structured_content["measurements"] == measurements[::-1]
+    assert result.structured_content["truncated"] is False
+
+
+async def test_get_recent_measurements_by_hours_keeps_newest_values(client, respx_mock):
+    # Two days of a 1-minute series hold more values than one response carries
+    start = datetime(2026, 10, 6, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+    measurements = [
+        {"timestamp": (start + timedelta(minutes=i)).isoformat(), "value": 48.0}
+        for i in range(2 * 24 * 60)
+    ]
+    respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
+
+    result = await client.call_tool("get_recent_measurements", {**KOELN_W, "hours": 48})
+
+    data = result.structured_content
+    assert (data["total_matches"], data["returned"], data["truncated"]) == (
+        2 * 24 * 60, MAX_SPAN_VALUES, True
+    )
+    # Most recent first, so the cut drops the oldest values
+    assert data["measurements"][0] == measurements[-1]
+    assert data["measurements"][-1] == measurements[-MAX_SPAN_VALUES]
 
 
 async def test_upstream_404_raises_tool_error(client, respx_mock):
@@ -172,33 +198,41 @@ async def test_upstream_404_raises_tool_error(client, respx_mock):
 
 
 @pytest.mark.parametrize(
-    ("tool", "arguments"),
+    ("tool", "arguments", "argument"),
     [
-        ("search_stations", {"limit": 0}),
-        ("find_nearest_stations", {"latitude": KOELN_LAT, "longitude": KOELN_LON, "limit": 0}),
-        ("find_nearest_stations", {"latitude": KOELN_LAT, "longitude": KOELN_LON, "radius_km": 0}),
-        ("show_stations_map", {"latitude": KOELN_LAT, "longitude": KOELN_LON, "radius_km": 0}),
-        ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "count": 0}),
-        ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "hours": 0}),
-        ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "hours": 841}),
+        ("search_stations", {"limit": 0}, "limit"),
+        ("search_stations", {"limit": 1001}, "limit"),
+        ("find_nearest_stations", {**KOELN, "limit": 0}, "limit"),
+        ("find_nearest_stations", {**KOELN, "radius_km": 0}, "radius_km"),
+        ("find_nearest_stations", {**KOELN, "radius_km": 1001}, "radius_km"),
+        ("find_nearest_stations", {**KOELN, "latitude": 95}, "latitude"),
+        ("find_nearest_stations", {**KOELN, "longitude": -181}, "longitude"),
+        ("show_stations_map", {**KOELN, "radius_km": 0}, "radius_km"),
+        ("show_stations_map", {**KOELN, "latitude": -91}, "latitude"),
+        ("get_recent_measurements", {**KOELN_W, "count": 0}, "count"),
+        ("get_recent_measurements", {**KOELN_W, "count": 1001}, "count"),
+        ("get_recent_measurements", {**KOELN_W, "hours": 0}, "hours"),
+        ("get_recent_measurements", {**KOELN_W, "hours": 841}, "hours"),
     ],
 )
-async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments):
-    # Only assert that the call fails: the message changes once validation
-    # becomes declarative (refactoring step 2).
-    with pytest.raises(ToolError):
+async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
+    with pytest.raises(ToolError, match=rf"validation error for call\[{tool}\]\n{argument}\n"):
         await client.call_tool(tool, arguments)
 
 
 @pytest.mark.parametrize(
     ("tool", "argument", "constraint"),
     [
-        ("search_stations", "limit", {"minimum": 1}),
-        ("find_nearest_stations", "limit", {"minimum": 1}),
-        ("find_nearest_stations", "radius_km", {"exclusiveMinimum": 0}),
-        ("show_stations_map", "limit", {"minimum": 1}),
-        ("show_stations_map", "radius_km", {"exclusiveMinimum": 0}),
-        ("get_recent_measurements", "count", {"minimum": 1}),
+        ("search_stations", "limit", {"minimum": 1, "maximum": 1000}),
+        ("find_nearest_stations", "limit", {"minimum": 1, "maximum": 1000}),
+        ("find_nearest_stations", "radius_km", {"exclusiveMinimum": 0, "maximum": 1000}),
+        ("find_nearest_stations", "latitude", {"minimum": -90, "maximum": 90}),
+        ("find_nearest_stations", "longitude", {"minimum": -180, "maximum": 180}),
+        ("show_stations_map", "limit", {"minimum": 1, "maximum": 1000}),
+        ("show_stations_map", "radius_km", {"exclusiveMinimum": 0, "maximum": 1000}),
+        ("show_stations_map", "latitude", {"minimum": -90, "maximum": 90}),
+        ("show_stations_map", "longitude", {"minimum": -180, "maximum": 180}),
+        ("get_recent_measurements", "count", {"minimum": 1, "maximum": 1000}),
     ],
 )
 async def test_constraints_in_tool_schema(client, tool, argument, constraint):

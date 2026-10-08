@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
 
 from pegelonline_mcp import client
-from pegelonline_mcp.constraints import Count, RadiusKm
+from pegelonline_mcp.constraints import Count, Latitude, Longitude, RadiusKm
 from pegelonline_mcp.geo import bbox_around, haversine_km
 from pegelonline_mcp.mapping import (
     normalize_timeseries,
@@ -167,8 +167,8 @@ async def _fetch_nearest_stations(
     }
 
 async def find_nearest_stations(
-    latitude: float,
-    longitude: float,
+    latitude: Latitude,
+    longitude: Longitude,
     radius_km: RadiusKm = 25,
     limit: Count = 10
 ) -> dict:
@@ -189,8 +189,8 @@ async def find_nearest_stations(
     return await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
 
 async def show_stations_map(
-    latitude: float,
-    longitude: float,
+    latitude: Latitude,
+    longitude: Longitude,
     radius_km: RadiusKm = 25,
     limit: Count = 50
 ) -> dict:

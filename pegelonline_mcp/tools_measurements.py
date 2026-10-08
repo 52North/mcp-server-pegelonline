@@ -11,6 +11,11 @@ from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, wa
 
 logger = logging.getLogger("pegelonline-dict")
 
+# Most values a time span returns: a full day of a 1-minute series, so
+# hours=24 always fits, while 35 days of such a series (about 45 000 values)
+# no longer flood the LLM context.
+MAX_SPAN_VALUES = 24 * 60
+
 
 async def get_latest_measurements(uuid: str) -> dict:
     """
@@ -74,18 +79,26 @@ async def get_recent_measurements(
             hours is given.
         hours: Fetch all measurements of the last N hours instead (e.g., 24).
             Prefer this for time spans: the measurement interval differs per
-            timeseries (1, 15 or 60 minutes).
+            timeseries (1, 15 or 60 minutes). At most the 1440 most recent
+            values are returned; total_matches and truncated report a cut.
     """
     logger.info(
         "get_recent_measurements: uuid=%s parameter=%s count=%d hours=%s",
         uuid, parameter, count, hours,
     )
+    truncation: dict[str, int | bool] = {}
     if hours is None:
         recent = await client.fetch_measurements(uuid, parameter, count)
     else:
-        recent = await client.fetch_measurements_within(
+        in_span = await client.fetch_measurements_within(
             uuid, parameter, math.ceil(hours * 60)
         )
+        recent = in_span[:MAX_SPAN_VALUES]
+        truncation = {
+            "total_matches": len(in_span),
+            "returned": len(recent),
+            "truncated": len(in_span) > len(recent),
+        }
     logger.info(
         "get_recent_measurements: uuid=%s parameter=%s -> %d measurements",
         uuid, parameter, len(recent),
@@ -94,6 +107,7 @@ async def get_recent_measurements(
     return {
         "uuid": uuid,
         "parameter": parameter,
+        **truncation,
         "measurements": recent
     }
 

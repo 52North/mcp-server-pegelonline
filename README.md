@@ -152,7 +152,8 @@ Returns the most recent `count` measurements (default: 2) for one parameter
 (`W`, `Q`, ...) of a station by `uuid`, most recent first. Alternatively,
 `hours` returns all measurements of the last N hours (e.g., 24); prefer it for
 time spans, as the measurement interval differs between timeseries (1, 15 or
-60 minutes).
+60 minutes). At most the 1440 most recent values come back (a day of 1-minute
+data); `total_matches` and `truncated` show whether the span held more.
 
 ### `find_nearest_stations`
 
