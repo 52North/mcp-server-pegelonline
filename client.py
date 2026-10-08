@@ -1,18 +1,11 @@
 """Access to the upstream Pegelonline APIs (dict API and official REST API)."""
 
 import logging
-import os
 
-from helpers import get_json
+from config import BASE_URL, OFFICIAL_API_URL
+from http_client import get_json
 
 logger = logging.getLogger("pegelonline-dict")
-
-BASE_URL = os.environ.get(
-    "PEGELONLINE_DICT_API_URL", "https://dict-api.pegelonline.wsv.de"
-).rstrip("/")
-OFFICIAL_API_URL = os.environ.get(
-    "PEGELONLINE_API_URL", "https://pegelonline.wsv.de/webservices/rest-api/v2"
-).rstrip("/")
 
 
 async def search(params: dict | None = None) -> list[dict]:

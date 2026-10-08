@@ -9,12 +9,13 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 import client
+from cache import cached
 from geo import bbox_around, haversine_km
-from helpers import cache_get, cache_set, configure_logging
+from logging_setup import configure_logging
 from mapping import normalize_timeseries, parameter_info, station_summary, water_name
 
-# Share the application logger namespace with helpers.py so a single log-config
-# entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
+# Share the application logger namespace with the other modules so a single
+# log-config entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
 logger = logging.getLogger("pegelonline-dict")
 
 # Server-wide guidance sent to clients on initialize; complements the
@@ -332,32 +333,22 @@ async def get_recent_measurements(uuid: str, parameter: str, count: Count = 2) -
     }
 
 @mcp.resource("water-bodies://list")
+@cached("water-bodies")
 async def list_water_bodies() -> str:
     """List all available water bodies (Gewässer)."""
-    logger.info("list_water_bodies: resource requested")
-    cached = cache_get("water-bodies")
-    if cached is not None:
-        logger.debug("list_water_bodies: served from cache")
-        return cached
     waters = await client.fetch_waters()
     result = "\n".join([f"{w['longname']} ({w['shortname']})" for w in waters])
-    cache_set("water-bodies", result)
     logger.info("list_water_bodies: fetched and cached %d water bodies", len(waters))
     return result
 
 @mcp.resource("states://list")
+@cached("states")
 async def list_states() -> str:
     """List all federal states (Bundesländer) that have stations."""
-    logger.info("list_states: resource requested")
-    cached = cache_get("states")
-    if cached is not None:
-        logger.debug("list_states: served from cache")
-        return cached
     # We fetch all stations from the dict-api to get unique states
     stations = await client.search()
     states = sorted(set(s.get("land") for s in stations if s.get("land")))
     result = "\n".join(states)
-    cache_set("states", result)
     logger.info("list_states: fetched and cached %d states", len(states))
     return result
 

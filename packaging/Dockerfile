@@ -25,7 +25,8 @@ WORKDIR /app
 # Application sources live at the repo root - that is the layout the Makefile's
 # PROJECT_ROOT (packaging/..) and the spec's %install expect. Build context must
 # therefore be the repository root:
-COPY server.py helpers.py geo.py main.py stations_map.html \
+COPY server.py main.py config.py logging_setup.py http_client.py cache.py \
+     client.py geo.py mapping.py stations_map.html \
      openapi-pegelonline-dict-api.json \
      LICENSE README.md ROADMAP.md pyproject.toml uv.lock ./
 

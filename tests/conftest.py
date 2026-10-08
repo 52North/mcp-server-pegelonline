@@ -8,8 +8,8 @@ import pytest
 from fastmcp import Client
 from syrupy.extensions.json import JSONSnapshotExtension
 
-import helpers
-from client import BASE_URL, OFFICIAL_API_URL
+import cache
+from config import BASE_URL, OFFICIAL_API_URL
 from server import mcp
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -29,9 +29,9 @@ def load_fixture(name: str) -> Any:
 @pytest.fixture(autouse=True)
 def clear_cache():
     """Resources cache module-wide; isolate every test from the others."""
-    helpers._cache.clear()
+    cache.clear()
     yield
-    helpers._cache.clear()
+    cache.clear()
 
 
 @pytest.fixture

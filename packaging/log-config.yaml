@@ -21,7 +21,7 @@ root:
   handlers: [stderr]
 
 loggers:
-  # Application HTTP tracing (helpers.get_json).
+  # Application HTTP tracing (http_client.get_json).
   pegelonline-dict:
     level: INFO
   # Route uvicorn's own loggers through the single root/stderr handler so their

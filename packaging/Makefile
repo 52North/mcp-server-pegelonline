@@ -29,7 +29,8 @@ source: $(SOURCE)
 
 $(SOURCE): requirements.txt
 	@tar czf $(SOURCE) -C $(PROJECT_ROOT) --transform "s,^,$(SOURCE_NAME)/," \
-			server.py helpers.py geo.py main.py stations_map.html \
+			server.py main.py config.py logging_setup.py http_client.py cache.py \
+			client.py geo.py mapping.py stations_map.html \
 			openapi-pegelonline-dict-api.json \
 			LICENSE README.md ROADMAP.md pyproject.toml uv.lock \
 			packaging/requirements.txt \
