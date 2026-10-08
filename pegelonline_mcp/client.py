@@ -7,6 +7,11 @@ from pegelonline_mcp.http_client import get_json
 
 logger = logging.getLogger("pegelonline-dict")
 
+# The official API keeps a little over 31 days of raw measurements, but
+# without `start` it returns only the last 10 days. A 35-day period reaches
+# back to the oldest kept value.
+HISTORY_MINUTES = 35 * 24 * 60
+
 
 async def search(params: dict | None = None) -> list[dict]:
     """Stations matching the dict API search filters; None values are ignored."""
@@ -29,15 +34,16 @@ async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict
 
     # Measurements are typically spaced 15 minutes apart. Request a window
     # twice that size server-side instead of downloading the full history,
-    # and fall back to the full history if the window has gaps.
-    window_minutes = max(count * 30, 60)
+    # and fall back to the full history if the window has gaps. A window
+    # that already spans the full history needs no fallback.
+    window_minutes = min(max(count * 30, 60), HISTORY_MINUTES)
     data = await get_json(url, params={"start": f"PT{window_minutes}M"})
-    if len(data) < count:
+    if len(data) < count and window_minutes < HISTORY_MINUTES:
         logger.debug(
             "fetch_measurements: %dM window yielded %d < %d, fetching full history",
             window_minutes, len(data), count,
         )
-        data = await get_json(url)
+        data = await get_json(url, params={"start": f"PT{HISTORY_MINUTES}M"})
 
     # The API returns measurements in chronological order
     recent = data[-count:] if data else []

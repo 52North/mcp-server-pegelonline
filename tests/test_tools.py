@@ -15,6 +15,7 @@ from conftest import (
     STATION_URL,
     load_fixture,
 )
+from pegelonline_mcp.client import HISTORY_MINUTES
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 
@@ -128,7 +129,7 @@ async def test_get_recent_measurements_falls_back_to_full_history(
 
     assert route.call_count == 2
     assert route.calls[0].request.url.params["start"] == "PT150M"
-    assert "start" not in route.calls[1].request.url.params
+    assert route.calls[1].request.url.params["start"] == f"PT{HISTORY_MINUTES}M"
     assert len(result.structured_content["measurements"]) == 5
     assert result.structured_content == snapshot_json
 
