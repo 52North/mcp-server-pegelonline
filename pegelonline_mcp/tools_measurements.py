@@ -18,6 +18,15 @@ async def get_latest_measurements(uuid: str) -> dict:
     Each measurement carries the comment on its timeseries, e.g. a disturbance or why
     discharge is currently not determined.
 
+    Water levels (W) also carry two states:
+    - state_mnw_mhw relates W to mean low water (MNW) and mean high water (MHW):
+      "low" (at or below MNW), "normal" (in between) or "high" (at or above MHW).
+    - state_nsw_hsw relates W to the highest navigable water level (HSW):
+      "normal" (below HSW) or "high" (at or above HSW).
+    Both can also be "unknown" (no reference values for this timeseries),
+    "commented" (malfunction or disturbance, see comment) or "out-dated"
+    (value older than 25 hours).
+
     Args:
         uuid: The unique identifier (UUID) of the station.
     """
@@ -35,7 +44,10 @@ async def get_latest_measurements(uuid: str) -> dict:
                 "value": curr.get("value"),
                 "unit": ts.get("unit"),
                 "timestamp": curr.get("timestamp"),
-                "state": curr.get("stateMnwMhw") or curr.get("stateNswHsw"),
+                # Two independent classifications; the API sends "unknown"
+                # rather than omitting one, so neither can stand in for the other.
+                "state_mnw_mhw": curr.get("stateMnwMhw"),
+                "state_nsw_hsw": curr.get("stateNswHsw"),
                 "comment": timeseries_comment(ts),
             })
     logger.info(

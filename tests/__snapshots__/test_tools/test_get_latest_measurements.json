@@ -4,7 +4,8 @@
       "comment": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
       "parameter": "ABFLUSS_ROHDATEN",
       "shortname": "Q",
-      "state": null,
+      "state_mnw_mhw": null,
+      "state_nsw_hsw": null,
       "timestamp": "2026-10-06T09:45:00+02:00",
       "unit": "m³/s",
       "value": 577.0
@@ -13,7 +14,8 @@
       "comment": null,
       "parameter": "WASSERSTAND ROHDATEN",
       "shortname": "W",
-      "state": "low",
+      "state_mnw_mhw": "low",
+      "state_nsw_hsw": "normal",
       "timestamp": "2026-10-06T13:45:00+02:00",
       "unit": "cm",
       "value": 48.0

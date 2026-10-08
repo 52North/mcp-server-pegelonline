@@ -142,7 +142,9 @@ river kilometer, water body and the available observation parameters
 
 Returns the latest measurement of every parameter (e.g., water level, flow,
 temperature) for a station by `uuid`, each with the comment on its timeseries
-(e.g., a disturbance or why discharge is currently not determined).
+(e.g., a disturbance or why discharge is currently not determined). Water levels
+also report two states: `state_mnw_mhw` relative to mean low and mean high
+water, and `state_nsw_hsw` relative to the highest navigable water level.
 
 ### `get_recent_measurements`
 

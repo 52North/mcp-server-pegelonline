@@ -99,6 +99,21 @@ async def test_get_latest_measurements(client, respx_mock, snapshot_json):
     assert result.structured_content == snapshot_json
 
 
+async def test_get_latest_measurements_reports_both_states(client, respx_mock):
+    # The API sends "unknown" instead of omitting a state, so the known
+    # NSW/HSW state must not be hidden behind it.
+    data = load_fixture("station_koeln_current")
+    w_series = next(ts for ts in data["timeseries"] if ts["shortname"] == "W")
+    w_series["currentMeasurement"]["stateMnwMhw"] = "unknown"
+    respx_mock.get(STATION_URL).respond(json=data)
+
+    result = await client.call_tool("get_latest_measurements", {"uuid": KOELN_UUID})
+
+    measurements = result.structured_content["measurements"]
+    w = next(m for m in measurements if m["shortname"] == "W")
+    assert (w["state_mnw_mhw"], w["state_nsw_hsw"]) == ("unknown", "normal")
+
+
 async def test_get_recent_measurements(client, respx_mock, snapshot_json):
     route = respx_mock.get(MEASUREMENTS_URL).respond(json=load_fixture("measurements_w"))
 
