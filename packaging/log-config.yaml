@@ -24,6 +24,11 @@ loggers:
   # Application HTTP tracing (http_client.get_json).
   pegelonline-dict:
     level: INFO
+  # Both log every request at INFO, duplicating the application's request logs.
+  httpx:
+    level: WARNING
+  mcp.server.lowlevel:
+    level: WARNING
   # Route uvicorn's own loggers through the single root/stderr handler so their
   # output shares the format above instead of uvicorn's colored default.
   uvicorn:

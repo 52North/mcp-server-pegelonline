@@ -183,6 +183,9 @@ list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
 - `PEGELONLINE_API_URL`: Override the official Pegelonline REST API base URL.
 - `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run python -m pegelonline_mcp`),
   written to stderr (default: `INFO`).
+- `FASTMCP_LOG_ENABLED`: Defaults to `false`, so FastMCP's own messages go through the
+  logging setup below and share its format; `true` brings back FastMCP's Rich console
+  output.
 
 ## Logging
 
@@ -202,3 +205,6 @@ in production. The two runtimes are configured differently but share this format
   ```bash
   uv run uvicorn pegelonline_mcp.asgi:app --port 8000 --log-config packaging/log-config.yaml
   ```
+
+Both runtimes silence the per-request INFO logs of `httpx` and `mcp.server.lowlevel`,
+since the application logs each upstream request itself.
