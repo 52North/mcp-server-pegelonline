@@ -32,6 +32,8 @@ def cached(key: str):
 
     The key does not depend on the arguments, so use it only for functions
     whose result is the same for every call (e.g. parameterless resources).
+    Empty results are not cached: for rarely changing data they point to an
+    upstream hiccup, so the next call retries.
     """
     def decorator(func):
         @functools.wraps(func)
@@ -41,7 +43,10 @@ def cached(key: str):
                 logger.debug("%s: served from cache", func.__name__)
                 return value
             value = await func(*args, **kwargs)
-            cache_set(key, value)
+            if value:
+                cache_set(key, value)
+            else:
+                logger.warning("%s: empty result, not cached", func.__name__)
             return value
         return wrapper
     return decorator

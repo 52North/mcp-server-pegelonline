@@ -1,5 +1,6 @@
 """Smoke tests for the MCP resources against mocked upstream APIs."""
 
+import httpx
 import pytest
 
 from conftest import SEARCH_URL, WATERS_URL, load_fixture
@@ -42,6 +43,23 @@ async def test_list_states(client, respx_mock, snapshot_json):
 
     await read_text(client, "states://list")
     assert route.call_count == 1
+
+
+async def test_list_states_does_not_cache_empty_response(client, respx_mock):
+    route = respx_mock.get(SEARCH_URL).mock(
+        side_effect=[
+            httpx.Response(200, json={"stations": []}),
+            httpx.Response(200, json=all_stations()),
+        ]
+    )
+
+    assert await read_text(client, "states://list") == ""
+    # Once upstream recovers, the next read fetches again instead of
+    # serving the empty result from the cache
+    text = await read_text(client, "states://list")
+
+    assert text.splitlines() == ["Hamburg", "Nordrhein-Westfalen"]
+    assert route.call_count == 2
 
 
 async def test_list_stations_in_state(client, respx_mock, snapshot_json):

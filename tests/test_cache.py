@@ -34,6 +34,20 @@ async def test_clear_forces_reload():
     assert len(calls) == 2
 
 
+async def test_empty_result_is_not_cached():
+    results = ["", "value"]
+
+    @cache.cached("test")
+    async def load() -> str:
+        return results.pop(0)
+
+    assert await load() == ""
+    # The empty result was not cached, so the function runs again
+    assert await load() == "value"
+    # The non-empty result is cached; another run would fail on the empty list
+    assert await load() == "value"
+
+
 async def test_expired_entry_is_reloaded(monkeypatch):
     load, calls = counting("test")
     monkeypatch.setattr(cache, "CACHE_TTL_SECONDS", 0)
