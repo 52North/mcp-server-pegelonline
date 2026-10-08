@@ -25,9 +25,7 @@ clean:
 	@rm -rf $(TOPDIR) RPMS
 	@rm -f $(SOURCE)
 
-source: $(SOURCE)
-
-$(SOURCE): requirements.txt
+source: requirements.txt
 	@tar czf $(SOURCE) -C $(PROJECT_ROOT) --transform "s,^,$(SOURCE_NAME)/," \
 			--exclude=__pycache__ \
 			pegelonline_mcp \
