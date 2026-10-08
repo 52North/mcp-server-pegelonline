@@ -24,7 +24,7 @@ def stations_map_ui() -> str:
 async def list_water_bodies() -> str:
     """List all available water bodies (Gewässer)."""
     waters = await client.fetch_waters()
-    result = "\n".join([f"{w['longname']} ({w['shortname']})" for w in waters])
+    result = "\n".join(_water_line(w) for w in waters)
     logger.info("list_water_bodies: fetched and cached %d water bodies", len(waters))
     return result
 
@@ -58,6 +58,14 @@ def _in_state(station: dict, state: str) -> bool:
     if isinstance(station.get("land_alternatives"), list):
         names += station["land_alternatives"]
     return state.casefold() in {n.casefold() for n in names if isinstance(n, str)}
+
+
+def _water_line(water: dict) -> str:
+    """One line of the water body list; the short name is omitted if unknown."""
+    line = f"{water.get('longname')}"
+    if water.get("shortname"):
+        line += f" ({water['shortname']})"
+    return line
 
 
 def _station_line(station: dict) -> str:

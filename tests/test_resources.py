@@ -33,6 +33,16 @@ async def test_list_water_bodies(client, respx_mock, snapshot_json):
     assert route.call_count == 1
 
 
+async def test_list_water_bodies_without_shortname(client, respx_mock):
+    waters = load_fixture("waters")
+    del waters[0]["shortname"]
+    respx_mock.get(WATERS_URL).respond(json=waters)
+
+    text = await read_text(client, "water-bodies://list")
+
+    assert text.splitlines()[:2] == ["ALLER", "ALTE MAAS (ALTE_MAAS)"]
+
+
 async def test_list_states(client, respx_mock, snapshot_json):
     route = respx_mock.get(SEARCH_URL).respond(json=all_stations())
 

@@ -32,6 +32,17 @@ def test_configure_logging_quiets_per_request_loggers(restore_logging, monkeypat
         assert logging.getLogger(name).level == logging.WARNING
 
 
+def test_configure_logging_falls_back_to_info_on_unknown_level(
+    restore_logging, monkeypatch, capsys
+):
+    monkeypatch.setenv("LOG_LEVEL", "VERBOSE")
+
+    configure_logging()
+
+    assert logging.getLogger().level == logging.INFO
+    assert "Unknown LOG_LEVEL 'VERBOSE', using INFO" in capsys.readouterr().err
+
+
 def fastmcp_logger_state(env: dict[str, str]) -> tuple[int, bool]:
     """Handler count and propagation of the fastmcp logger in a fresh interpreter.
 

@@ -3,8 +3,6 @@
 import math
 
 EARTH_RADIUS_KM = 6371.0
-# Approximate length of one degree of latitude
-KM_PER_DEG_LAT = 111.32
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -21,8 +19,16 @@ def bbox_around(
 ) -> tuple[float, float, float, float]:
     """Bounding box enclosing a circle around a point.
 
-    Returns ``(min_lon, min_lat, max_lon, max_lat)``.
+    Returns ``(min_lon, min_lat, max_lon, max_lat)``. The circle lies on the
+    same sphere as ``haversine_km``, so every point within ``radius_km``
+    falls inside the box.
     """
-    dlat = radius_km / KM_PER_DEG_LAT
-    dlon = radius_km / (KM_PER_DEG_LAT * math.cos(math.radians(lat)))
+    delta = radius_km / EARTH_RADIUS_KM
+    dlat = math.degrees(delta)
+    if abs(lat) + dlat >= 90:
+        # The circle reaches a pole, so it spans every longitude
+        return -180.0, max(lat - dlat, -90.0), 180.0, min(lat + dlat, 90.0)
+    # The circle is widest north or south of its center, which makes its
+    # longitude extent slightly larger than delta / cos(lat)
+    dlon = math.degrees(math.asin(math.sin(delta) / math.cos(math.radians(lat))))
     return lon - dlon, lat - dlat, lon + dlon, lat + dlat

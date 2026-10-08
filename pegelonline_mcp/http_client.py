@@ -18,7 +18,10 @@ http_client = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
 
 async def get_json(url: str, params: dict | None = None) -> Any:
-    """GET a JSON document, translating transport errors into clear MCP errors."""
+    """GET a JSON document.
+
+    Transport errors, HTTP errors and invalid JSON become clear MCP errors.
+    """
     logger.info("GET %s params=%s", url, params)
     start = time.monotonic()
     try:
@@ -43,4 +46,12 @@ async def get_json(url: str, params: dict | None = None) -> Any:
         "GET %s -> %s (%.0f ms)", url, response.status_code,
         (time.monotonic() - start) * 1000,
     )
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        content_type = response.headers.get("content-type", "unknown")
+        logger.warning("GET %s returned no JSON (%s)", url, content_type)
+        raise ToolError(
+            f"Upstream API returned no valid JSON for {url} "
+            f"(content type: {content_type})."
+        ) from exc

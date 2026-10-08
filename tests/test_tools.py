@@ -197,6 +197,14 @@ async def test_upstream_404_raises_tool_error(client, respx_mock):
         await client.call_tool("get_station_info", {"uuid": KOELN_UUID})
 
 
+async def test_upstream_non_json_raises_tool_error(client, respx_mock):
+    # E.g. a maintenance page delivered with status 200
+    respx_mock.get(STATION_URL).respond(200, html="<html>Wartungsarbeiten</html>")
+
+    with pytest.raises(ToolError, match="no valid JSON.*text/html"):
+        await client.call_tool("get_station_info", {"uuid": KOELN_UUID})
+
+
 @pytest.mark.parametrize(
     ("tool", "arguments", "argument"),
     [
