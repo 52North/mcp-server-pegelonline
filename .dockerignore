@@ -6,8 +6,8 @@
 .claude/
 .gemini/
 .mcp.json
-__pycache__/
-*.pyc
+**/__pycache__/
+**/*.pyc
 build/
 dist/
 wheels/

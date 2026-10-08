@@ -73,12 +73,12 @@ uvx --from "cyclonedx-bom>=7.3.0" cyclonedx-py environment \
     --pyproject pyproject.toml --output-reproducible \
     --output-file %{appname}-bom.json
 
-# Application files
+# Application files: the pegelonline_mcp package; the unit's WorkingDirectory
+# puts it on uvicorn's import path.
 install -d -m 0755 %{buildroot}%{appdir}/app
-install -m 0644 server.py main.py config.py logging_setup.py http_client.py cache.py \
-    client.py geo.py mapping.py constraints.py tools_stations.py \
-    tools_measurements.py resources.py stations_map.html \
-    openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
+find pegelonline_mcp -type f ! -name '*.pyc' \
+    -exec install -D -m 0644 {} %{buildroot}%{appdir}/app/{} \;
+install -m 0644 openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
 
 # systemd unit
 install -d -m 0755 %{buildroot}%{_unitdir}
