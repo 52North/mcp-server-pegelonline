@@ -28,9 +28,14 @@ async def fetch_station(uuid: str, current: bool = False) -> dict:
     return await get_json(f"{OFFICIAL_API_URL}/stations/{uuid}.json", params=params)
 
 
+def _measurements_url(uuid: str, parameter: str) -> str:
+    """URL of the measurements of a station parameter."""
+    return f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
+
+
 async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict]:
     """The last ``count`` measurements of a station parameter, most recent first."""
-    url = f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
+    url = _measurements_url(uuid, parameter)
 
     # Measurements are typically spaced 15 minutes apart. Request a window
     # twice that size server-side instead of downloading the full history,
@@ -49,6 +54,18 @@ async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict
     recent = data[-count:] if data else []
     recent.reverse()
     return recent
+
+
+async def fetch_measurements_within(
+    uuid: str, parameter: str, minutes: int
+) -> list[dict]:
+    """Measurements of a station parameter within the last ``minutes``.
+
+    Most recent first, like ``fetch_measurements``.
+    """
+    url = _measurements_url(uuid, parameter)
+    data = await get_json(url, params={"start": f"PT{minutes}M"})
+    return data[::-1]
 
 
 async def fetch_waters() -> list[dict]:

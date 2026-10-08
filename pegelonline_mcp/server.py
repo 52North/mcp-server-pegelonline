@@ -24,15 +24,19 @@ Workflow:
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info,
   get_latest_measurements and get_recent_measurements.
-- Measurements arrive every 15 minutes, so get_recent_measurements with
-  count=96 covers roughly the last 24 hours.
+- Measurement intervals differ per timeseries (equidistance_minutes in
+  get_station_info: mostly 15 minutes, often 1 or 60). For a time span, call
+  get_recent_measurements with hours (e.g., hours=24) instead of estimating a
+  count; 24 hours of a 1-minute series are 1440 values.
 
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),
   not water depth. Absolute height = gaugeZero (m above NHN) + W / 100.
   Some stations, mostly on canals, report W directly in m+NN.
-- Discharge Q may be missing, stale or unreliable at low water; check the
-  timeseries comment from search_stations or get_station_info and compare timestamps.
+- Discharge Q may be missing, stale or unreliable at low water; compare
+  timestamps. get_latest_measurements and get_station_info return a comment
+  per timeseries that explains such cases and reports disturbances or
+  stations out of service.
 - Measurements are raw data (Rohdaten) and unverified; small jumps of about
   1 cm are usually measurement noise.
 """

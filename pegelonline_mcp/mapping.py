@@ -35,6 +35,18 @@ def parameter_info(ts: dict) -> dict[str, Any]:
     }
 
 
+def timeseries_comment(ts: dict) -> str | None:
+    """Comment on a timeseries (e.g., a disturbance), or None if there is none.
+
+    The API sends a short and a long description; the long one can carry
+    more detail, so it is preferred.
+    """
+    comment = ts.get("comment")
+    if not isinstance(comment, dict):
+        return None
+    return comment.get("longDescription") or comment.get("shortDescription")
+
+
 def station_summary(station: dict) -> dict[str, Any]:
     """Compact station description with its observation parameters."""
     return {

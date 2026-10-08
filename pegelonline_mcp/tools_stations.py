@@ -12,6 +12,7 @@ from pegelonline_mcp.mapping import (
     normalize_timeseries,
     parameter_info,
     station_summary,
+    timeseries_comment,
     water_name,
 )
 from pegelonline_mcp.resources import MAP_UI_URI
@@ -98,8 +99,8 @@ async def search_stations(
 async def get_station_info(uuid: str) -> dict:
     """
     Fetch static metadata for a specific station (name, agency, coordinates,
-    water body, gauge zero and available observation parameters) without
-    any measurement values.
+    water body, gauge zero and available observation parameters with their
+    comments, e.g. disturbances) without any measurement values.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -112,6 +113,7 @@ async def get_station_info(uuid: str) -> dict:
             **parameter_info(ts),
             "equidistance_minutes": ts.get("equidistance"),
             "gaugeZero": ts.get("gaugeZero"),
+            "comment": timeseries_comment(ts),
         }
         for ts in normalize_timeseries(data)
     ]

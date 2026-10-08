@@ -7,6 +7,7 @@
   "number": "2730010",
   "parameters": [
     {
+      "comment": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
       "equidistance_minutes": 15,
       "gaugeZero": null,
       "longname": "ABFLUSS_ROHDATEN",
@@ -14,6 +15,7 @@
       "unit": "m³/s"
     },
     {
+      "comment": null,
       "equidistance_minutes": 15,
       "gaugeZero": {
         "unit": "m. ü. NHN",

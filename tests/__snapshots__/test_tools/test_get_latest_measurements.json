@@ -1,6 +1,7 @@
 {
   "measurements": [
     {
+      "comment": "Abflussermittlung unter W = 50cm aktuell nicht möglich",
       "parameter": "ABFLUSS_ROHDATEN",
       "shortname": "Q",
       "state": null,
@@ -9,6 +10,7 @@
       "value": 577.0
     },
     {
+      "comment": null,
       "parameter": "WASSERSTAND ROHDATEN",
       "shortname": "W",
       "state": "low",

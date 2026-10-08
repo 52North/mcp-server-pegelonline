@@ -1,12 +1,13 @@
 """Tools that fetch measurement values of a station."""
 
 import logging
+import math
 
 from fastmcp import FastMCP
 
 from pegelonline_mcp import client
-from pegelonline_mcp.constraints import Count
-from pegelonline_mcp.mapping import normalize_timeseries, water_name
+from pegelonline_mcp.constraints import Count, Hours
+from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, water_name
 
 logger = logging.getLogger("pegelonline-dict")
 
@@ -14,6 +15,8 @@ logger = logging.getLogger("pegelonline-dict")
 async def get_latest_measurements(uuid: str) -> dict:
     """
     Fetch the latest measurements (e.g., water level, flow, temperature) for a specific station.
+    Each measurement carries the comment on its timeseries, e.g. a disturbance or why
+    discharge is currently not determined.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -32,7 +35,8 @@ async def get_latest_measurements(uuid: str) -> dict:
                 "value": curr.get("value"),
                 "unit": ts.get("unit"),
                 "timestamp": curr.get("timestamp"),
-                "state": curr.get("stateMnwMhw") or curr.get("stateNswHsw")
+                "state": curr.get("stateMnwMhw") or curr.get("stateNswHsw"),
+                "comment": timeseries_comment(ts),
             })
     logger.info(
         "get_latest_measurements: uuid=%s -> %d current measurements",
@@ -45,20 +49,31 @@ async def get_latest_measurements(uuid: str) -> dict:
         "measurements": measurements
     }
 
-async def get_recent_measurements(uuid: str, parameter: str, count: Count = 2) -> dict:
+async def get_recent_measurements(
+    uuid: str, parameter: str, count: Count = 2, hours: Hours | None = None
+) -> dict:
     """
     Fetch the most recent measurements for a specific parameter of a station.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
         parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
-        count: Number of recent measurements to fetch (default: 2).
+        count: Number of recent measurements to fetch (default: 2). Ignored if
+            hours is given.
+        hours: Fetch all measurements of the last N hours instead (e.g., 24).
+            Prefer this for time spans: the measurement interval differs per
+            timeseries (1, 15 or 60 minutes).
     """
     logger.info(
-        "get_recent_measurements: uuid=%s parameter=%s count=%d",
-        uuid, parameter, count,
+        "get_recent_measurements: uuid=%s parameter=%s count=%d hours=%s",
+        uuid, parameter, count, hours,
     )
-    recent = await client.fetch_measurements(uuid, parameter, count)
+    if hours is None:
+        recent = await client.fetch_measurements(uuid, parameter, count)
+    else:
+        recent = await client.fetch_measurements_within(
+            uuid, parameter, math.ceil(hours * 60)
+        )
     logger.info(
         "get_recent_measurements: uuid=%s parameter=%s -> %d measurements",
         uuid, parameter, len(recent),

@@ -73,6 +73,16 @@ async def test_fetch_measurements_most_recent_first(respx_mock):
     assert recent == [measurements[-1], measurements[-2]]
 
 
+async def test_fetch_measurements_within(respx_mock):
+    measurements = load_fixture("measurements_w")
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
+
+    recent = await client.fetch_measurements_within(KOELN_UUID, "W", 1440)
+
+    assert route.calls.last.request.url.params["start"] == "PT1440M"
+    assert recent == measurements[::-1]
+
+
 async def test_fetch_measurements_falls_back_to_full_history(respx_mock):
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).mock(

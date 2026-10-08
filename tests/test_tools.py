@@ -134,6 +134,21 @@ async def test_get_recent_measurements_falls_back_to_full_history(
     assert result.structured_content == snapshot_json
 
 
+async def test_get_recent_measurements_by_hours(client, respx_mock):
+    measurements = load_fixture("measurements_w")
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
+
+    result = await client.call_tool(
+        "get_recent_measurements",
+        {"uuid": KOELN_UUID, "parameter": "W", "count": 2, "hours": 24},
+    )
+
+    # One request for the time span; count does not apply
+    assert route.call_count == 1
+    assert route.calls.last.request.url.params["start"] == "PT1440M"
+    assert result.structured_content["measurements"] == measurements[::-1]
+
+
 async def test_upstream_404_raises_tool_error(client, respx_mock):
     respx_mock.get(STATION_URL).respond(404)
 
@@ -149,6 +164,8 @@ async def test_upstream_404_raises_tool_error(client, respx_mock):
         ("find_nearest_stations", {"latitude": KOELN_LAT, "longitude": KOELN_LON, "radius_km": 0}),
         ("show_stations_map", {"latitude": KOELN_LAT, "longitude": KOELN_LON, "radius_km": 0}),
         ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "count": 0}),
+        ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "hours": 0}),
+        ("get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "W", "hours": 841}),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments):
@@ -174,3 +191,12 @@ async def test_constraints_in_tool_schema(client, tool, argument, constraint):
     schema = tools[tool].inputSchema["properties"][argument]
 
     assert constraint.items() <= schema.items()
+
+
+async def test_hours_constraints_in_tool_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+    schema = tools["get_recent_measurements"].inputSchema["properties"]["hours"]
+
+    # hours is optional, so its constraints sit in the non-null branch
+    number = next(s for s in schema["anyOf"] if s.get("type") == "number")
+    assert {"exclusiveMinimum": 0, "maximum": 840}.items() <= number.items()

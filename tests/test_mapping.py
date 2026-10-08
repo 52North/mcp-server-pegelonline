@@ -1,5 +1,11 @@
 from conftest import load_fixture
-from pegelonline_mcp.mapping import normalize_timeseries, parameter_info, station_summary, water_name
+from pegelonline_mcp.mapping import (
+    normalize_timeseries,
+    parameter_info,
+    station_summary,
+    timeseries_comment,
+    water_name,
+)
 
 W = {"shortname": "W", "longname": "WASSERSTAND ROHDATEN", "unit": "cm", "equidistance": 15}
 Q = {"shortname": "Q", "longname": "ABFLUSS_ROHDATEN", "unit": "m³/s"}
@@ -43,6 +49,29 @@ def test_parameter_info():
         "longname": "WASSERSTAND ROHDATEN",
         "unit": "cm",
     }
+
+
+def test_timeseries_comment_prefers_long_description():
+    ts = {
+        "comment": {
+            "shortDescription": "Behelfspegel - Messwerte können Fehler aufweisen",
+            "longDescription": "Nach einer Schiffskollision ist aktuell ein Behelfspegel"
+            " in Betrieb. Die Messwerte können Fehler aufweisen.",
+        }
+    }
+
+    assert timeseries_comment(ts).startswith("Nach einer Schiffskollision")
+
+
+def test_timeseries_comment_falls_back_to_short_description():
+    ts = {"comment": {"shortDescription": "Techn. Störung"}}
+
+    assert timeseries_comment(ts) == "Techn. Störung"
+
+
+def test_timeseries_comment_missing():
+    assert timeseries_comment(W) is None
+    assert timeseries_comment({"comment": None}) is None
 
 
 def test_station_summary():

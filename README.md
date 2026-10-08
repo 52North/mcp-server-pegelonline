@@ -136,17 +136,21 @@ Sachsen-Anhalt.
 
 Returns static metadata for a station by `uuid`: names, agency, coordinates,
 river kilometer, water body and the available observation parameters
-(shortname, longname, unit, measurement interval, gauge zero).
+(shortname, longname, unit, measurement interval, gauge zero, comment).
 
 ### `get_latest_measurements`
 
 Returns the latest measurement of every parameter (e.g., water level, flow,
-temperature) for a station by `uuid`.
+temperature) for a station by `uuid`, each with the comment on its timeseries
+(e.g., a disturbance or why discharge is currently not determined).
 
 ### `get_recent_measurements`
 
 Returns the most recent `count` measurements (default: 2) for one parameter
-(`W`, `Q`, ...) of a station by `uuid`, most recent first.
+(`W`, `Q`, ...) of a station by `uuid`, most recent first. Alternatively,
+`hours` returns all measurements of the last N hours (e.g., 24); prefer it for
+time spans, as the measurement interval differs between timeseries (1, 15 or
+60 minutes).
 
 ### `find_nearest_stations`
 
