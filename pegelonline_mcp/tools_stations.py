@@ -34,7 +34,10 @@ async def search_stations(
 ) -> dict:
     """
     Search for Pegelonline stations using various optional parameters.
-    Multiple parameters are combined with AND.
+    Multiple parameters are combined with AND. Text filters match
+    case-insensitive substrings, also of alternative (e.g., English) names:
+    land='Sachsen' also returns stations in Niedersachsen and Sachsen-Anhalt,
+    so check the returned fields when an exact match matters.
 
     Args:
         station: Search by station name (e.g., 'Köln').

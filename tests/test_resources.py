@@ -1,5 +1,7 @@
 """Smoke tests for the MCP resources against mocked upstream APIs."""
 
+import pytest
+
 from conftest import SEARCH_URL, WATERS_URL, load_fixture
 from pegelonline_mcp.resources import MAP_UI_URI
 
@@ -61,6 +63,27 @@ async def test_list_stations_in_state_without_water(client, respx_mock):
     lines = text.splitlines()
     assert len(lines) == 3
     assert lines[0] == "ALTENGAMME (UUID: 2ee12b9a-f7fd-4856-82b9-6bdd850c2bba)"
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        ("Sachsen", ["SCHÖNA", "PIRNA"]),
+        ("sachsen", ["SCHÖNA", "PIRNA"]),
+        ("Saxony", ["SCHÖNA", "PIRNA"]),
+        ("Lower%20Saxony", ["AHLDEN"]),
+    ],
+)
+async def test_list_stations_in_state_keeps_only_that_state(
+    client, respx_mock, state, expected
+):
+    # Recorded land=Sachsen response: the dict API matches substrings, so it
+    # also returns stations in Niedersachsen and Sachsen-Anhalt.
+    respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_sachsen"))
+
+    text = await read_text(client, f"states://{state}/stations")
+
+    assert [line.split(" (")[0] for line in text.splitlines()] == expected
 
 
 async def test_stations_map_ui(client):

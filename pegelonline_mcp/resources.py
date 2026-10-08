@@ -41,9 +41,23 @@ async def list_states() -> str:
 async def list_stations_in_state(state: str) -> str:
     """List all stations in a specific federal state."""
     logger.info("list_stations_in_state: state=%s", state)
-    stations = await client.search({"land": state})
-    logger.info("list_stations_in_state: state=%s -> %d stations", state, len(stations))
+    # The dict API matches `land` as a substring, also of the alternative
+    # names, so "Sachsen" returns Niedersachsen and Sachsen-Anhalt as well.
+    matches = await client.search({"land": state})
+    stations = [s for s in matches if _in_state(s, state)]
+    logger.info(
+        "list_stations_in_state: state=%s -> %d stations (%d upstream matches)",
+        state, len(stations), len(matches),
+    )
     return "\n".join(_station_line(s) for s in stations)
+
+
+def _in_state(station: dict, state: str) -> bool:
+    """Whether ``state`` is the station's state, by name or alternative name."""
+    names = [station.get("land")]
+    if isinstance(station.get("land_alternatives"), list):
+        names += station["land_alternatives"]
+    return state.casefold() in {n.casefold() for n in names if isinstance(n, str)}
 
 
 def _station_line(station: dict) -> str:

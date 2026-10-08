@@ -128,6 +128,10 @@ The API combines multiple parameters with a logical AND. An optional `limit`
 (default: 50) caps the number of returned stations; the response reports
 `total_matches` and `truncated` so cut-off results are visible.
 
+Text filters match case-insensitive substrings, also of alternative (e.g.,
+English) names: `land='Sachsen'` also returns stations in Niedersachsen and
+Sachsen-Anhalt.
+
 ### `get_station_info`
 
 Returns static metadata for a station by `uuid`: names, agency, coordinates,

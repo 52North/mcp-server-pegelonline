@@ -1,0 +1,236 @@
+{
+  "mqtttopics": [
+    "edis/pegelonline/+/+/+/+/522286e2-b2b3-4d0d-9a11-01b3ea418c76/+",
+    "edis/pegelonline/+/+/+/+/7cb7461b-3530-4c01-8978-7f676b8f71ed/+",
+    "edis/pegelonline/+/+/+/+/85d686f1-55b2-4d36-8dba-3207b50901a7/+",
+    "edis/pegelonline/+/+/+/+/f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6/+"
+  ],
+  "pegelonlinelinks": [
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/522286e2-b2b3-4d0d-9a11-01b3ea418c76/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/7cb7461b-3530-4c01-8978-7f676b8f71ed/Q/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/7cb7461b-3530-4c01-8978-7f676b8f71ed/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/85d686f1-55b2-4d36-8dba-3207b50901a7/W/measurements.json",
+    "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6/W/measurements.json"
+  ],
+  "stations": [
+    {
+      "uuid": "522286e2-b2b3-4d0d-9a11-01b3ea418c76",
+      "number": "48900102",
+      "shortname": "AHLDEN",
+      "longname": "AHLDEN",
+      "km": 58.71,
+      "agency": "VERDEN",
+      "longitude": 9.570881,
+      "latitude": 52.762431,
+      "voiceServiceNumber": "+49228 286527 003",
+      "water": {
+        "shortname": "ALLER",
+        "longname": "ALLER"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "mqtttopic": "edis/pegelonline/+/+/+/+/522286e2-b2b3-4d0d-9a11-01b3ea418c76/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/522286e2-b2b3-4d0d-9a11-01b3ea418c76/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "country_alternatives": [
+        "Germany",
+        "Niemcy",
+        "Alemaña",
+        "Allemagne",
+        "Duitsland"
+      ],
+      "land": "Niedersachsen",
+      "land_alternatives": [
+        "Lower Saxony",
+        "Dolna Saksonia",
+        "Basse-Saxe",
+        "Nedersaksen"
+      ],
+      "kreis": "Heidekreis",
+      "kreis_alternatives": [
+        "Heide (arrondissement)",
+        "HK"
+      ],
+      "einzugsgebiet": "Aller",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/522286e2-b2b3-4d0d-9a11-01b3ea418c76/+"
+    },
+    {
+      "uuid": "7cb7461b-3530-4c01-8978-7f676b8f71ed",
+      "number": "501010",
+      "shortname": "SCHÖNA",
+      "longname": "SCHÖNA",
+      "km": 2.05,
+      "agency": "STANDORT DRESDEN",
+      "longitude": 14.235229,
+      "latitude": 50.875762,
+      "voiceServiceNumber": "+49228 286527 067",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "Q",
+          "longname": "ABFLUSS_ROHDATEN",
+          "unit": "m³/s",
+          "equidistance": 15,
+          "mqtttopic": "edis/pegelonline/+/+/+/+/7cb7461b-3530-4c01-8978-7f676b8f71ed/Q",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/7cb7461b-3530-4c01-8978-7f676b8f71ed/Q/measurements.json"
+        },
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 116.2,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/7cb7461b-3530-4c01-8978-7f676b8f71ed/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/7cb7461b-3530-4c01-8978-7f676b8f71ed/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "country_alternatives": [
+        "Germany",
+        "Niemcy",
+        "Alemaña",
+        "Allemagne",
+        "Duitsland"
+      ],
+      "land": "Sachsen",
+      "land_alternatives": [
+        "Saxony",
+        "Saksonia",
+        "Saxe",
+        "Saksen"
+      ],
+      "kreis": "Sächsische Schweiz-Osterzgebirge",
+      "kreis_alternatives": [
+        "Saechsische Schweiz-Osterzgebirge",
+        "Suisse-Saxonne-Monts-Métallifères-de-l'Est",
+        "PIR",
+        "DW",
+        "FTL",
+        "SEB"
+      ],
+      "mqtttopic": "edis/pegelonline/+/+/+/+/7cb7461b-3530-4c01-8978-7f676b8f71ed/+"
+    },
+    {
+      "uuid": "85d686f1-55b2-4d36-8dba-3207b50901a7",
+      "number": "501040",
+      "shortname": "PIRNA",
+      "longname": "PIRNA",
+      "km": 34.67,
+      "agency": "STANDORT DRESDEN",
+      "longitude": 13.929755,
+      "latitude": 50.964585,
+      "voiceServiceNumber": "+49228 286527 068",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 108.026,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/85d686f1-55b2-4d36-8dba-3207b50901a7/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/85d686f1-55b2-4d36-8dba-3207b50901a7/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "country_alternatives": [
+        "Germany",
+        "Niemcy",
+        "Alemaña",
+        "Allemagne",
+        "Duitsland"
+      ],
+      "land": "Sachsen",
+      "land_alternatives": [
+        "Saxony",
+        "Saksonia",
+        "Saxe",
+        "Saksen"
+      ],
+      "kreis": "Sächsische Schweiz-Osterzgebirge",
+      "kreis_alternatives": [
+        "Saechsische Schweiz-Osterzgebirge",
+        "Suisse-Saxonne-Monts-Métallifères-de-l'Est",
+        "PIR",
+        "DW",
+        "FTL",
+        "SEB"
+      ],
+      "einzugsgebiet": "Elbe",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/85d686f1-55b2-4d36-8dba-3207b50901a7/+"
+    },
+    {
+      "uuid": "f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6",
+      "number": "501330",
+      "shortname": "PRETZSCH-MAUKEN",
+      "longname": "PRETZSCH-MAUKEN",
+      "km": 184.45,
+      "agency": "STANDORT DRESDEN",
+      "longitude": 12.823297,
+      "latitude": 51.716993,
+      "voiceServiceNumber": "+49228 286527 074",
+      "water": {
+        "shortname": "ELBE",
+        "longname": "ELBE"
+      },
+      "timeseries": [
+        {
+          "shortname": "W",
+          "longname": "WASSERSTAND ROHDATEN",
+          "unit": "cm",
+          "equidistance": 15,
+          "gaugeZero": {
+            "unit": "m. ü. NHN",
+            "value": 68.794,
+            "validFrom": "2019-11-01"
+          },
+          "mqtttopic": "edis/pegelonline/+/+/+/+/f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6/W",
+          "pegelonlinelink": "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6/W/measurements.json"
+        }
+      ],
+      "country": "Deutschland",
+      "country_alternatives": [
+        "Germany",
+        "Niemcy",
+        "Alemaña",
+        "Allemagne",
+        "Duitsland"
+      ],
+      "land": "Sachsen-Anhalt",
+      "land_alternatives": [
+        "Saxony-Anhalt",
+        "Saksonia-Anhalt",
+        "Saxe-Anhalt",
+        "Saksen-Anhalt"
+      ],
+      "kreis": "Wittenberg",
+      "kreis_alternatives": [
+        "WB",
+        "GHC",
+        "JE"
+      ],
+      "einzugsgebiet": "Elbe",
+      "mqtttopic": "edis/pegelonline/+/+/+/+/f3dc8f07-c2bb-4b92-b0b0-4e01a395a2c6/+"
+    }
+  ]
+}
