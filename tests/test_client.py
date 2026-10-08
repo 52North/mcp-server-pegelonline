@@ -3,6 +3,8 @@
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pytest
+from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp import client
 from conftest import KOELN_UUID, MEASUREMENTS_URL, SEARCH_URL, STATION_URL, load_fixture
@@ -62,6 +64,47 @@ async def test_fetch_station_current(respx_mock):
         "includeTimeseries": "true",
         "includeCurrentMeasurement": "true",
     }
+
+
+@pytest.mark.parametrize(
+    ("identifier", "segment"),
+    [("2730010", b"2730010"), ("KÖLN", b"K%C3%96LN"), ("HAMM UW", b"HAMM%20UW")],
+)
+async def test_fetch_station_accepts_numbers_and_names(respx_mock, identifier, segment):
+    route = respx_mock.get().respond(json={})
+
+    await client.fetch_station(identifier)
+
+    assert route.calls.last.request.url.raw_path.endswith(
+        b"/stations/" + segment + b".json?includeTimeseries=true"
+    )
+
+
+async def test_path_segments_are_escaped(respx_mock):
+    route = respx_mock.get().respond(json=[])
+
+    await client.fetch_measurements_within("../../waters", "W?start=P31D#", 60)
+
+    # The request stays below /stations/ and keeps its own query string
+    assert route.calls.last.request.url.raw_path.endswith(
+        b"/stations/..%2F..%2Fwaters/W%3Fstart%3DP31D%23"
+        b"/measurements.json?start=PT60M"
+    )
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda: client.fetch_station(".."),
+        lambda: client.fetch_measurements("..", "W", 2),
+        lambda: client.fetch_measurements_within(KOELN_UUID, "", 60),
+    ],
+    ids=["station", "measurements", "measurements-within"],
+)
+async def test_dot_only_segments_are_rejected(respx_mock, call):
+    # Escaping leaves dots alone, so ".." would still climb up the path
+    with pytest.raises(ToolError, match="Invalid station or parameter identifier"):
+        await call()
 
 
 async def test_fetch_measurements_most_recent_first(respx_mock):

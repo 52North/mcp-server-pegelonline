@@ -1,6 +1,9 @@
 """Access to the upstream Pegelonline APIs (dict API and official REST API)."""
 
 import logging
+from urllib.parse import quote
+
+from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.http_client import get_json
@@ -20,17 +23,32 @@ async def search(params: dict | None = None) -> list[dict]:
     return data.get("stations", [])
 
 
+def _segment(value: str) -> str:
+    """``value`` escaped as a single URL path segment.
+
+    Escaping keeps "/", "?" and "#" from changing the URL. Segments of only
+    dots would still be resolved as relative paths, so they are rejected.
+    """
+    if not value.strip("."):
+        raise ToolError(f"Invalid station or parameter identifier: {value!r}")
+    return quote(value, safe="")
+
+
 async def fetch_station(uuid: str, current: bool = False) -> dict:
     """Station metadata with its timeseries, optionally with current measurements."""
     params = {"includeTimeseries": "true"}
     if current:
         params["includeCurrentMeasurement"] = "true"
-    return await get_json(f"{OFFICIAL_API_URL}/stations/{uuid}.json", params=params)
+    url = f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}.json"
+    return await get_json(url, params=params)
 
 
 def _measurements_url(uuid: str, parameter: str) -> str:
     """URL of the measurements of a station parameter."""
-    return f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}/measurements.json"
+    return (
+        f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}/{_segment(parameter)}"
+        "/measurements.json"
+    )
 
 
 async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict]:
