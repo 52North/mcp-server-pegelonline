@@ -1,5 +1,5 @@
 from conftest import load_fixture
-from mapping import normalize_timeseries, parameter_info, station_summary, water_name
+from pegelonline_mcp.mapping import normalize_timeseries, parameter_info, station_summary, water_name
 
 W = {"shortname": "W", "longname": "WASSERSTAND ROHDATEN", "unit": "cm", "equidistance": 15}
 Q = {"shortname": "Q", "longname": "ABFLUSS_ROHDATEN", "unit": "m³/s"}

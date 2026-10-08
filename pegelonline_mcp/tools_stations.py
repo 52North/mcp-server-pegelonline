@@ -5,11 +5,16 @@ import logging
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
 
-import client
-from constraints import Count, RadiusKm
-from geo import bbox_around, haversine_km
-from mapping import normalize_timeseries, parameter_info, station_summary, water_name
-from resources import MAP_UI_URI
+from pegelonline_mcp import client
+from pegelonline_mcp.constraints import Count, RadiusKm
+from pegelonline_mcp.geo import bbox_around, haversine_km
+from pegelonline_mcp.mapping import (
+    normalize_timeseries,
+    parameter_info,
+    station_summary,
+    water_name,
+)
+from pegelonline_mcp.resources import MAP_UI_URI
 
 logger = logging.getLogger("pegelonline-dict")
 

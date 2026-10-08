@@ -4,10 +4,7 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-import resources
-import tools_measurements
-import tools_stations
-from logging_setup import configure_logging
+from pegelonline_mcp import resources, tools_measurements, tools_stations
 
 # Share the application logger namespace with the other modules so a single
 # log-config entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
@@ -59,10 +56,3 @@ async def healthz(request: Request) -> PlainTextResponse:
     # records each hit, so INFO here would be pure noise.
     logger.debug("healthz: liveness probe")
     return PlainTextResponse("ok")
-
-
-if __name__ == "__main__":
-    # Configure logging for dev setup.
-    # uvicorn logging is configured via --log-file config.
-    configure_logging()
-    mcp.run()

@@ -4,9 +4,9 @@ import logging
 
 from fastmcp import FastMCP
 
-import client
-from constraints import Count
-from mapping import normalize_timeseries, water_name
+from pegelonline_mcp import client
+from pegelonline_mcp.constraints import Count
+from pegelonline_mcp.mapping import normalize_timeseries, water_name
 
 logger = logging.getLogger("pegelonline-dict")
 

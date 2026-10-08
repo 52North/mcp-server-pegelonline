@@ -6,9 +6,9 @@ from pathlib import Path
 from fastmcp import FastMCP
 from fastmcp.apps import UI_MIME_TYPE, AppConfig, ResourceCSP
 
-import client
-from cache import cached
-from mapping import water_name
+from pegelonline_mcp import client
+from pegelonline_mcp.cache import cached
+from pegelonline_mcp.mapping import water_name
 
 logger = logging.getLogger("pegelonline-dict")
 
@@ -18,7 +18,7 @@ MAP_UI_URI = "ui://pegelonline-dict/stations-map"
 def stations_map_ui() -> str:
     """Leaflet map UI rendered inline for the show_stations_map tool."""
     logger.info("stations_map_ui: serving Leaflet map resource %s", MAP_UI_URI)
-    return (Path(__file__).parent / "stations_map.html").read_text(encoding="utf-8")
+    return (Path(__file__).parent / "static" / "stations_map.html").read_text(encoding="utf-8")
 
 @cached("water-bodies")
 async def list_water_bodies() -> str:

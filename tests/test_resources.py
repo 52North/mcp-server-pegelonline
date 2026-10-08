@@ -1,7 +1,7 @@
 """Smoke tests for the MCP resources against mocked upstream APIs."""
 
 from conftest import SEARCH_URL, WATERS_URL, load_fixture
-from resources import MAP_UI_URI
+from pegelonline_mcp.resources import MAP_UI_URI
 
 
 def all_stations() -> dict:

@@ -3,7 +3,7 @@
 The MCP endpoint is served at ``/mcp`` and the LB health probe at ``/healthz``.
 """
 
-from server import mcp
+from pegelonline_mcp.server import mcp
 
 # Streamable HTTP ASGI app (Starlette). Mounts the MCP endpoint at /mcp and
 # carries the /healthz custom route registered in server.py.

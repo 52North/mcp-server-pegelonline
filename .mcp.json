@@ -5,7 +5,8 @@
       "args": [
         "run",
         "python",
-        "server.py"
+        "-m",
+        "pegelonline_mcp"
       ]
     }
   }

@@ -1,6 +1,6 @@
 """Unit tests for the TTL cache and the @cached decorator."""
 
-import cache
+from pegelonline_mcp import cache
 
 
 def counting(key: str):

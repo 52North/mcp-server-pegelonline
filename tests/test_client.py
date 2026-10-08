@@ -2,7 +2,7 @@
 
 import httpx
 
-import client
+from pegelonline_mcp import client
 from conftest import KOELN_UUID, MEASUREMENTS_URL, SEARCH_URL, STATION_URL, load_fixture
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from geo import bbox_around, haversine_km
+from pegelonline_mcp.geo import bbox_around, haversine_km
 
 KOELN = (50.936949, 6.9633)
 DUESSELDORF = (51.225498, 6.769891)

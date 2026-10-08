@@ -2,8 +2,8 @@
 
 import logging
 
-from config import BASE_URL, OFFICIAL_API_URL
-from http_client import get_json
+from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
+from pegelonline_mcp.http_client import get_json
 
 logger = logging.getLogger("pegelonline-dict")
 

@@ -8,9 +8,9 @@ import pytest
 from fastmcp import Client
 from syrupy.extensions.json import JSONSnapshotExtension
 
-import cache
-from config import BASE_URL, OFFICIAL_API_URL
-from server import mcp
+from pegelonline_mcp import cache
+from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
+from pegelonline_mcp.server import mcp
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
