@@ -29,6 +29,10 @@ loggers:
     level: WARNING
   mcp.server.lowlevel:
     level: WARNING
+  # Stateless HTTP ends a throwaway session after every request and logs
+  # "Terminating session: None" at INFO; everything else it logs is an error.
+  mcp.server.streamable_http:
+    level: WARNING
   # Route uvicorn's own loggers through the single root/stderr handler so their
   # output shares the format above instead of uvicorn's colored default.
   uvicorn:

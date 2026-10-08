@@ -79,6 +79,10 @@ journalctl -u mcp-server-pegelonline -f        # follow logs
 
 The MCP endpoint is then `http://localhost:8000/mcp`.
 
+The server runs stateless: it keeps no MCP session between requests, so several
+instances behind a load balancer need no sticky sessions. `GET /mcp` (a stream for
+server-initiated messages, which this server never sends) answers `405`.
+
 **3. Override configuration (optional)**
 Edit the env file, then restart:
 
