@@ -43,12 +43,19 @@ async def fetch_station(uuid: str, current: bool = False) -> dict:
     return await get_json(url, params=params)
 
 
+def _timeseries_url(uuid: str, parameter: str) -> str:
+    """Base URL of a station parameter (timeseries), without suffix."""
+    return f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}/{_segment(parameter)}"
+
+
 def _measurements_url(uuid: str, parameter: str) -> str:
     """URL of the measurements of a station parameter."""
-    return (
-        f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}/{_segment(parameter)}"
-        "/measurements.json"
-    )
+    return f"{_timeseries_url(uuid, parameter)}/measurements.json"
+
+
+async def fetch_timeseries(uuid: str, parameter: str) -> dict:
+    """Metadata of a station parameter: unit, interval, gauge zero and comment."""
+    return await get_json(f"{_timeseries_url(uuid, parameter)}.json")
 
 
 async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict]:

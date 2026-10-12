@@ -15,14 +15,22 @@ from conftest import (
     MEASUREMENTS_URL,
     SEARCH_URL,
     STATION_URL,
+    TIMESERIES_URL,
     load_fixture,
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
+from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.tools_measurements import MAX_SPAN_VALUES
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
 KOELN_W = {"uuid": KOELN_UUID, "parameter": "W"}
+
+
+@pytest.fixture
+def timeseries_w(respx_mock):
+    """Köln W metadata, which get_recent_measurements fetches before the values."""
+    return respx_mock.get(TIMESERIES_URL).respond(json=load_fixture("timeseries_koeln_w"))
 
 
 async def test_search_stations(client, respx_mock, snapshot_json):
@@ -138,7 +146,7 @@ async def test_get_latest_measurements_reports_both_states(client, respx_mock):
     assert (w["state_mnw_mhw"], w["state_nsw_hsw"]) == ("unknown", "normal")
 
 
-async def test_get_recent_measurements(client, respx_mock, snapshot_json):
+async def test_get_recent_measurements(client, respx_mock, timeseries_w, snapshot_json):
     route = respx_mock.get(MEASUREMENTS_URL).respond(json=load_fixture("measurements_w"))
 
     result = await client.call_tool(
@@ -152,7 +160,7 @@ async def test_get_recent_measurements(client, respx_mock, snapshot_json):
 
 
 async def test_get_recent_measurements_falls_back_to_full_history(
-    client, respx_mock, snapshot_json
+    client, respx_mock, timeseries_w, snapshot_json
 ):
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).mock(
@@ -173,7 +181,7 @@ async def test_get_recent_measurements_falls_back_to_full_history(
     assert result.structured_content == snapshot_json
 
 
-async def test_get_recent_measurements_by_hours(client, respx_mock):
+async def test_get_recent_measurements_by_hours(client, respx_mock, timeseries_w):
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
 
@@ -189,7 +197,9 @@ async def test_get_recent_measurements_by_hours(client, respx_mock):
     assert result.structured_content["truncated"] is False
 
 
-async def test_get_recent_measurements_by_hours_keeps_newest_values(client, respx_mock):
+async def test_get_recent_measurements_by_hours_keeps_newest_values(
+    client, respx_mock, timeseries_w
+):
     # Two days of a 1-minute series hold more values than one response carries
     start = datetime(2026, 10, 6, 12, 0, tzinfo=timezone(timedelta(hours=2)))
     measurements = [
@@ -207,6 +217,24 @@ async def test_get_recent_measurements_by_hours_keeps_newest_values(client, resp
     # Most recent first, so the cut drops the oldest values
     assert data["measurements"][0] == measurements[-1]
     assert data["measurements"][-1] == measurements[-MAX_SPAN_VALUES]
+
+
+async def test_get_recent_measurements_reports_unit_and_comment(client, respx_mock):
+    # Recorded Köln Q: its unit is not cm, and the timeseries carries a comment
+    station = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}"
+    respx_mock.get(f"{station}/Q.json").respond(json=load_fixture("timeseries_koeln_q"))
+    respx_mock.get(f"{station}/Q/measurements.json").respond(
+        json=[{"timestamp": "2026-10-06T09:45:00+02:00", "value": 577.0}]
+    )
+
+    result = await client.call_tool(
+        "get_recent_measurements", {"uuid": KOELN_UUID, "parameter": "Q", "count": 1}
+    )
+
+    data = result.structured_content
+    assert data["unit"] == "m³/s"
+    assert data["comment"] == "Abflussermittlung unter W = 50cm aktuell nicht möglich"
+    assert [m["value"] for m in data["measurements"]] == [577.0]
 
 
 async def test_upstream_404_raises_tool_error(client, respx_mock):

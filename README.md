@@ -163,6 +163,9 @@ Returns the most recent `count` measurements (default: 2) for one parameter
 time spans, as the measurement interval differs between timeseries (1, 15 or
 60 minutes). At most the 1440 most recent values come back (a day of 1-minute
 data); `total_matches` and `truncated` show whether the span held more.
+The response also carries the timeseries' `unit`, which differs between
+stations (e.g., W in `cm` or `m+NN`, conductivity in `µS/cm` or `mS/cm`), and
+its `comment`, if any.
 
 ### `find_nearest_stations`
 

@@ -17,6 +17,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 KOELN_UUID = "a6ee8177-107b-47dd-bcfd-30960ccc6e9c"
 SEARCH_URL = f"{BASE_URL}/search"
 STATION_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}.json"
+TIMESERIES_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W.json"
 MEASUREMENTS_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W/measurements.json"
 WATERS_URL = f"{OFFICIAL_API_URL}/waters.json"
 

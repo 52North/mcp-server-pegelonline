@@ -33,11 +33,12 @@ Workflow:
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),
   not water depth. Absolute height = gaugeZero (m above NHN) + W / 100.
-  Some stations, mostly on canals, report W directly in m+NN.
+  Some stations, mostly on canals, report W directly in m+NN; the unit
+  returned with every measurement tool's values tells which.
 - Discharge Q may be missing, stale or unreliable at low water; compare
-  timestamps. get_latest_measurements and get_station_info return a comment
-  per timeseries that explains such cases and reports disturbances or
-  stations out of service.
+  timestamps. get_latest_measurements, get_recent_measurements and
+  get_station_info return a comment per timeseries that explains such cases
+  and reports disturbances or stations out of service.
 - Measurements are raw data (Rohdaten) and unverified; small jumps of about
   1 cm are usually measurement noise.
 """

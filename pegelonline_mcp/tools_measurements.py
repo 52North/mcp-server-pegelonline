@@ -72,6 +72,9 @@ async def get_recent_measurements(
 ) -> dict:
     """
     Fetch the most recent measurements for a specific parameter of a station.
+    Values are given in unit, which differs between timeseries: water levels
+    (W) are mostly in cm, but some stations, mostly on canals, report m+NN.
+    comment explains disturbances or stale values, if there are any.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -87,6 +90,8 @@ async def get_recent_measurements(
         "get_recent_measurements: uuid=%s parameter=%s count=%d hours=%s",
         uuid, parameter, count, hours,
     )
+    # Fetched first, so an unknown parameter fails with a single 404
+    timeseries = await client.fetch_timeseries(uuid, parameter)
     truncation: dict[str, int | bool] = {}
     if hours is None:
         recent = await client.fetch_measurements(uuid, parameter, count)
@@ -108,6 +113,8 @@ async def get_recent_measurements(
     return {
         "uuid": uuid,
         "parameter": parameter,
+        "unit": timeseries.get("unit"),
+        "comment": timeseries_comment(timeseries),
         **truncation,
         "measurements": recent
     }

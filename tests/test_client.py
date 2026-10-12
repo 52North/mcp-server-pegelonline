@@ -7,7 +7,14 @@ import pytest
 from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp import client
-from conftest import KOELN_UUID, MEASUREMENTS_URL, SEARCH_URL, STATION_URL, load_fixture
+from conftest import (
+    KOELN_UUID,
+    MEASUREMENTS_URL,
+    SEARCH_URL,
+    STATION_URL,
+    TIMESERIES_URL,
+    load_fixture,
+)
 
 
 def fake_measurements_api(days: int, interval_minutes: int):
@@ -66,6 +73,15 @@ async def test_fetch_station_current(respx_mock):
     }
 
 
+async def test_fetch_timeseries(respx_mock):
+    route = respx_mock.get(TIMESERIES_URL).respond(json=load_fixture("timeseries_koeln_w"))
+
+    timeseries = await client.fetch_timeseries(KOELN_UUID, "W")
+
+    assert route.called
+    assert timeseries["unit"] == "cm"
+
+
 @pytest.mark.parametrize(
     ("identifier", "segment"),
     [("2730010", b"2730010"), ("KÖLN", b"K%C3%96LN"), ("HAMM UW", b"HAMM%20UW")],
@@ -98,8 +114,9 @@ async def test_path_segments_are_escaped(respx_mock):
         lambda: client.fetch_station(".."),
         lambda: client.fetch_measurements("..", "W", 2),
         lambda: client.fetch_measurements_within(KOELN_UUID, "", 60),
+        lambda: client.fetch_timeseries(KOELN_UUID, ".."),
     ],
-    ids=["station", "measurements", "measurements-within"],
+    ids=["station", "measurements", "measurements-within", "timeseries"],
 )
 async def test_dot_only_segments_are_rejected(respx_mock, call):
     # Escaping leaves dots alone, so ".." would still climb up the path
