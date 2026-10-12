@@ -4,6 +4,7 @@ Not named ``http.py``: in the flat module layout that would shadow the
 standard library ``http`` package that httpx, starlette and uvicorn import.
 """
 
+import asyncio
 import logging
 import time
 from typing import Any
@@ -11,21 +12,55 @@ from typing import Any
 import httpx
 from fastmcp.exceptions import ToolError
 
+from pegelonline_mcp import __version__
+
 logger = logging.getLogger("pegelonline-dict")
 
-# Shared client for all requests; the process lifetime bounds its lifecycle
-http_client = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+TIMEOUT_SECONDS = 30.0
+# A failed connection attempt never reached the server, so it is safe to
+# retry; read timeouts and HTTP errors are not retried.
+CONNECT_RETRIES = 2
+RETRY_DELAY_SECONDS = 0.5
+# Identifies this server to the Pegelonline operators
+USER_AGENT = (
+    f"mcp-server-pegelonline/{__version__} "
+    "(+https://github.com/52North/mcp-server-pegelonline)"
+)
+
+# Shared client for all requests; the process lifetime bounds its lifecycle.
+# No custom transport: with one, httpx ignores HTTPS_PROXY and NO_PROXY.
+http_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(TIMEOUT_SECONDS), headers={"User-Agent": USER_AGENT}
+)
+
+
+async def _get(url: str, params: dict | None) -> httpx.Response:
+    """GET that retries failed connection attempts with a growing delay."""
+    attempt = 1
+    while True:
+        try:
+            return await http_client.get(url, params=params)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            if attempt > CONNECT_RETRIES:
+                raise
+            logger.warning(
+                "GET %s failed to connect (attempt %d/%d), retrying: %s",
+                url, attempt, CONNECT_RETRIES + 1, exc,
+            )
+            await asyncio.sleep(RETRY_DELAY_SECONDS * attempt)
+            attempt += 1
 
 
 async def get_json(url: str, params: dict | None = None) -> Any:
     """GET a JSON document.
 
+    Failed connection attempts are retried up to CONNECT_RETRIES times.
     Transport errors, HTTP errors and invalid JSON become clear MCP errors.
     """
     logger.info("GET %s params=%s", url, params)
     start = time.monotonic()
     try:
-        response = await http_client.get(url, params=params)
+        response = await _get(url, params)
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code
@@ -38,7 +73,9 @@ async def get_json(url: str, params: dict | None = None) -> Any:
         raise ToolError(f"Upstream API returned HTTP {status} for {url}.") from exc
     except httpx.TimeoutException as exc:
         logger.warning("GET %s timed out", url)
-        raise ToolError(f"Request to {url} timed out after 30s.") from exc
+        raise ToolError(
+            f"Request to {url} timed out after {TIMEOUT_SECONDS:g}s."
+        ) from exc
     except httpx.RequestError as exc:
         logger.warning("GET %s failed: %s", url, exc)
         raise ToolError(f"Could not reach upstream API at {url}: {exc}") from exc

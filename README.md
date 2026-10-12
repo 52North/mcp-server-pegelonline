@@ -209,6 +209,8 @@ list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
 - `FASTMCP_LOG_ENABLED`: Defaults to `false`, so FastMCP's own messages go through the
   logging setup below and share its format; `true` brings back FastMCP's Rich console
   output.
+- `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`: The standard proxy variables are honored for
+  requests to the upstream APIs.
 
 ## Logging
 

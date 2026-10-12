@@ -8,7 +8,7 @@ import pytest
 from fastmcp import Client
 from syrupy.extensions.json import JSONSnapshotExtension
 
-from pegelonline_mcp import cache
+from pegelonline_mcp import cache, http_client
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.server import mcp
 
@@ -33,6 +33,12 @@ def clear_cache():
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def no_retry_delay(monkeypatch):
+    """Retry failed connections at once instead of waiting between attempts."""
+    monkeypatch.setattr(http_client, "RETRY_DELAY_SECONDS", 0)
 
 
 @pytest.fixture
