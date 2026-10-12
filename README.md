@@ -44,6 +44,12 @@ JSON snapshots in `tests/__snapshots__/`, refresh them with `--snapshot-update`)
 uv run pytest
 ```
 
+Lint and type checks (both configured in `pyproject.toml`, versions pinned in `uv.lock`):
+```bash
+uv run ruff check
+uv run mypy
+```
+
 ### Registering with Gemini CLI
 
 To use this server with Gemini CLI, register it with the following command:

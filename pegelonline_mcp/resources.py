@@ -33,7 +33,7 @@ async def list_states() -> str:
     """List all federal states (Bundesländer) that have stations."""
     # We fetch all stations from the dict-api to get unique states
     stations = await client.search()
-    states = sorted(set(s.get("land") for s in stations if s.get("land")))
+    states = sorted({s["land"] for s in stations if s.get("land")})
     result = "\n".join(states)
     logger.info("list_states: fetched and cached %d states", len(states))
     return result

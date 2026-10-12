@@ -1,12 +1,12 @@
 """Unit tests for the upstream API layer against mocked HTTP."""
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
 
-from pegelonline_mcp import client
 from conftest import (
     KOELN_UUID,
     MEASUREMENTS_URL,
@@ -15,6 +15,7 @@ from conftest import (
     TIMESERIES_URL,
     load_fixture,
 )
+from pegelonline_mcp import client
 
 
 def fake_measurements_api(days: int, interval_minutes: int):
@@ -24,7 +25,7 @@ def fake_measurements_api(days: int, interval_minutes: int):
     10 days without ``start``.
     """
     now = datetime(2026, 10, 8, 12, 0, tzinfo=timezone(timedelta(hours=2)))
-    series = [
+    series: list[dict[str, Any]] = [
         {"timestamp": (now - timedelta(minutes=age)).isoformat(), "value": 48.0}
         for age in range(days * 24 * 60 - interval_minutes, -1, -interval_minutes)
     ]

@@ -22,6 +22,15 @@ def asgi_client(**kwargs) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), **kwargs)
 
 
+async def test_healthz():
+    # A plain route: it needs no MCP session manager, hence no lifespan
+    async with asgi_client() as http:
+        response = await http.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.text == "ok"
+
+
 async def test_any_instance_answers_without_session():
     # Behind a load balancer without sticky sessions, a request may reach an
     # instance that never saw the client's initialize. A stateful server

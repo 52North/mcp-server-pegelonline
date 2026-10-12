@@ -253,6 +253,23 @@ async def test_upstream_non_json_raises_tool_error(client, respx_mock):
 
 
 @pytest.mark.parametrize(
+    ("mock", "message"),
+    [
+        ({"return_value": httpx.Response(503)}, "HTTP 503"),
+        ({"side_effect": httpx.ReadTimeout("read timed out")}, "timed out"),
+        ({"side_effect": httpx.ConnectError("connection refused")},
+         "Could not reach upstream API"),
+    ],
+    ids=["server-error", "timeout", "connection-error"],
+)
+async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, message):
+    respx_mock.get(STATION_URL).mock(**mock)
+
+    with pytest.raises(ToolError, match=message):
+        await client.call_tool("get_station_info", {"uuid": KOELN_UUID})
+
+
+@pytest.mark.parametrize(
     ("tool", "arguments", "argument"),
     [
         ("search_stations", {"limit": 0}, "limit"),
