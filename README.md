@@ -48,8 +48,19 @@ uv run fastmcp dev apps pegelonline_mcp/server.py
 
 To run the server normally (stdio transport):
 ```bash
-uv run python -m pegelonline_mcp
+uv run mcp-server-pegelonline
 ```
+`uv sync` installs the `mcp-server-pegelonline` command; `uv run python -m pegelonline_mcp`
+does the same.
+
+Without a clone, `uvx` runs the server straight from GitHub:
+```bash
+uvx --from git+https://github.com/52North/mcp-server-pegelonline mcp-server-pegelonline
+```
+In the client registrations below, this command can replace
+`uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline`.
+`uvx` resolves the dependencies afresh instead of using `uv.lock`, so it may run newer
+versions than the tested ones.
 
 To run the tests (upstream APIs are mocked; tool responses are compared against
 JSON snapshots in `tests/__snapshots__/`, refresh them with `--snapshot-update`):
@@ -72,7 +83,7 @@ check that `packaging/requirements.txt` matches `uv.lock` on every push to
 To use this server with Gemini CLI, register it with the following command:
 
 ```bash
-gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python -m pegelonline_mcp
+gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline
 ```
 
 *Note: Replace `/path/to/mcp-server-pegelonline-dict-api` with the absolute path to this project's directory.*
@@ -84,7 +95,7 @@ server up automatically when started inside this directory. To register it manua
 (e.g., with user scope):
 
 ```bash
-claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run python -m pegelonline_mcp
+claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline
 ```
 
 Note: Claude Code is a CLI and does not render MCP Apps — the `show_stations_map`
@@ -104,7 +115,7 @@ Leaflet map inline. Add the server to `%APPDATA%\Claude\claude_desktop_config.js
       "args": [
         "--directory",
         "/path/to/mcp-server-pegelonline-dict-api",
-        "run", "python", "-m", "pegelonline_mcp"
+        "run", "mcp-server-pegelonline"
       ]
     }
   }
@@ -218,7 +229,7 @@ integrity hashes and only accepts messages from its host frame.
 
 - `PEGELONLINE_DICT_API_URL`: Override the Dict API base URL.
 - `PEGELONLINE_API_URL`: Override the official Pegelonline REST API base URL.
-- `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run python -m pegelonline_mcp`),
+- `LOG_LEVEL`: Logging level for the **stdio** runtime (`uv run mcp-server-pegelonline`),
   written to stderr (default: `INFO`).
 - `FASTMCP_LOG_ENABLED`: Defaults to `false`, so FastMCP's own messages go through the
   logging setup below and share its format; `true` brings back FastMCP's Rich console
@@ -232,7 +243,7 @@ Logs always go to **stderr** in the format `<time> <LEVEL> <logger> <message>`, 
 they never interfere with the stdio JSON-RPC channel and are captured by journald
 in production. The two runtimes are configured differently but share this format:
 
-- **stdio (dev)** — `uv run python -m pegelonline_mcp` configures logging in-process; tune it
+- **stdio (dev)** — `uv run mcp-server-pegelonline` configures logging in-process; tune it
   with `LOG_LEVEL`.
 - **HTTP / uvicorn (prod)** — logging is driven by a
   [`--log-config`](https://www.uvicorn.org/settings/#logging) file
