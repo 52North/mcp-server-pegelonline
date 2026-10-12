@@ -191,7 +191,8 @@ claude.ai) the map is rendered inline: OpenStreetMap tiles, a circle for the
 search radius and clickable station markers with name, water body, distance
 and UUID. Clients without MCP Apps support receive the structured station
 list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
-`limit` (default: 50).
+`limit` (default: 50). The map loads Leaflet from unpkg pinned by subresource
+integrity hashes and only accepts messages from its host frame.
 
 ## Resources
 

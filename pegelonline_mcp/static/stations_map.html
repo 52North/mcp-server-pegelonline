@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pegelonline stations map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
   html, body { margin: 0; padding: 0; height: 100%; }
   #map { position: absolute; inset: 0; }
@@ -104,6 +106,8 @@
   const INIT_ID = 1;
 
   window.addEventListener("message", (event) => {
+    // Only the host may drive the map, not other frames on the page
+    if (event.source !== window.parent) return;
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
 

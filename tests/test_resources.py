@@ -1,5 +1,7 @@
 """Smoke tests for the MCP resources against mocked upstream APIs."""
 
+from html.parser import HTMLParser
+
 import httpx
 import pytest
 
@@ -119,3 +121,33 @@ async def test_stations_map_ui(client):
 
     assert "<html" in text.lower()
     assert "leaflet" in text.lower()
+
+
+class ExternalAssets(HTMLParser):
+    """Collects the attributes of external scripts and stylesheets."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.assets: list[dict[str, str | None]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        url = attributes.get("src") if tag == "script" else attributes.get("href")
+        is_asset = tag == "script" or (
+            tag == "link" and attributes.get("rel") == "stylesheet"
+        )
+        if is_asset and url and url.startswith(("http://", "https://")):
+            self.assets.append(attributes)
+
+
+async def test_stations_map_external_assets_are_pinned(client):
+    # Subresource integrity: the browser refuses a CDN file whose hash differs
+    parser = ExternalAssets()
+    parser.feed(await read_text(client, MAP_UI_URI))
+
+    assert parser.assets
+    for asset in parser.assets:
+        assert (asset.get("integrity") or "").startswith(
+            ("sha256-", "sha384-", "sha512-")
+        ), asset
+        assert "crossorigin" in asset, asset
