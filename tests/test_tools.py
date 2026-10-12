@@ -276,3 +276,19 @@ async def test_hours_constraints_in_tool_schema(client):
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
     assert {"exclusiveMinimum": 0, "maximum": 840}.items() <= number.items()
+
+
+async def test_tools_are_annotated_read_only(client):
+    tools = await client.list_tools()
+
+    assert {t.name for t in tools} == {
+        "search_stations",
+        "get_station_info",
+        "find_nearest_stations",
+        "show_stations_map",
+        "get_latest_measurements",
+        "get_recent_measurements",
+    }
+    for tool in tools:
+        assert tool.annotations.readOnlyHint is True, tool.name
+        assert tool.annotations.openWorldHint is True, tool.name

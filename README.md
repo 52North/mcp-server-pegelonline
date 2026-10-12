@@ -110,6 +110,10 @@ using the Streamable HTTP transport:
 
 ## Tools
 
+All tools only read from the Pegelonline APIs and are annotated with
+`readOnlyHint` and `openWorldHint`, so clients can allow them without asking
+for confirmation.
+
 ### `search_stations`
 
 Searches for stations with the following optional parameters:

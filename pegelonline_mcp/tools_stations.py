@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
 
 from pegelonline_mcp import client
+from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.constraints import Count, Latitude, Longitude, RadiusKm
 from pegelonline_mcp.geo import bbox_around, haversine_km
 from pegelonline_mcp.mapping import (
@@ -222,7 +223,11 @@ async def show_stations_map(
 
 def register(mcp: FastMCP) -> None:
     """Register the station tools on the server."""
-    mcp.tool(search_stations)
-    mcp.tool(get_station_info)
-    mcp.tool(find_nearest_stations)
-    mcp.tool(show_stations_map, app=AppConfig(resource_uri=MAP_UI_URI))
+    mcp.tool(search_stations, annotations=READ_ONLY)
+    mcp.tool(get_station_info, annotations=READ_ONLY)
+    mcp.tool(find_nearest_stations, annotations=READ_ONLY)
+    mcp.tool(
+        show_stations_map,
+        app=AppConfig(resource_uri=MAP_UI_URI),
+        annotations=READ_ONLY,
+    )

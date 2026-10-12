@@ -6,6 +6,7 @@ import math
 from fastmcp import FastMCP
 
 from pegelonline_mcp import client
+from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.constraints import Count, Hours
 from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, water_name
 
@@ -114,5 +115,5 @@ async def get_recent_measurements(
 
 def register(mcp: FastMCP) -> None:
     """Register the measurement tools on the server."""
-    mcp.tool(get_latest_measurements)
-    mcp.tool(get_recent_measurements)
+    mcp.tool(get_latest_measurements, annotations=READ_ONLY)
+    mcp.tool(get_recent_measurements, annotations=READ_ONLY)
