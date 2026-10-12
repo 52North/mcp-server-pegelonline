@@ -1,11 +1,24 @@
 # Pegelonline Dict API MCP Server
 
-An MCP Server that provides tools to search for gauge stations in Germany using the Pegelonline Dict API.
+An MCP server for gauge stations on German federal waterways: it finds stations via
+the Pegelonline Dict API and reads their metadata and measurements from the official
+Pegelonline REST API.
 
 ## Features
 
-- **Search Tool**: Find stations by name, water body, agency, state, country, catchment area, district, observation parameter, or geographic bounding box.
-- **FastMCP Integration**: Built with FastMCP for easy integration into the MCP ecosystem.
+- **Station search**: `search_stations` filters by name, water body, agency, state,
+  country, catchment area, district, observation parameter or bounding box;
+  `find_nearest_stations` searches around a coordinate.
+- **Station details**: `get_station_info` returns metadata and the observed
+  parameters.
+- **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
+  the latest values or a time span, with unit and timeseries comment.
+- **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
+  (MCP App) in Claude Desktop and claude.ai.
+- **Resources**: water bodies, federal states and the stations per state.
+- **Read-only**: every tool is annotated as read-only.
+- **Deployment**: stdio for local clients, stateless Streamable HTTP for servers,
+  packaged as an RPM for RHEL 9.
 
 ## Setup
 
