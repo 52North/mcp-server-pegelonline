@@ -1000,7 +1000,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "cyclonedx-bom" },
     { name = "fastmcp", extra = ["apps"] },
     { name = "mypy" },
     { name = "pytest" },
@@ -1008,6 +1007,9 @@ dev = [
     { name = "respx" },
     { name = "ruff" },
     { name = "syrupy" },
+]
+sbom = [
+    { name = "cyclonedx-bom" },
 ]
 
 [package.metadata]
@@ -1020,7 +1022,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "cyclonedx-bom", specifier = ">=7.3.0" },
     { name = "fastmcp", extras = ["apps"], specifier = ">=3.4.2" },
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=9.1.1" },
@@ -1029,6 +1030,7 @@ dev = [
     { name = "ruff", specifier = ">=0.17.0" },
     { name = "syrupy", specifier = ">=6.1.1" },
 ]
+sbom = [{ name = "cyclonedx-bom", specifier = ">=7.3.0" }]
 
 [[package]]
 name = "mdurl"

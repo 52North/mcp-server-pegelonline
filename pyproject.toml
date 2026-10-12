@@ -23,7 +23,6 @@ module-root = ""
 
 [dependency-groups]
 dev = [
-    "cyclonedx-bom>=7.3.0",
     "fastmcp[apps]>=3.4.2",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
@@ -31,6 +30,9 @@ dev = [
     "respx>=0.23.1",
     "ruff>=0.17.0",
     "syrupy>=6.1.1",
+]
+sbom = [
+    "cyclonedx-bom>=7.3.0",
 ]
 
 [tool.pytest.ini_options]

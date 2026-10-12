@@ -11,9 +11,9 @@
 %global __requires_exclude ^.*$
 %global __provides_exclude ^.*$
 
-# Overridable from the Makefile via `rpmbuild --define`
-# fall back to defaults so the spec can also be built standalone.
-%{!?version:      %global version 0.1.0}
+# Overridable from the Makefile via `rpmbuild --define`; the version has no
+# fallback, so pyproject.toml (read by the Makefile) stays its only source.
+%{!?version:      %{error:version is not defined; build with `make rpm`}}
 %{!?build_number: %global build_number 1}
 %{!?source_name:  %global source_name %{appname}-%{version}}
 %{!?source:       %global source %{source_name}.tar.gz}
@@ -24,7 +24,7 @@ Release:        %{build_number}%{?dist}
 Summary:        MCP server for the German Pegelonline Dict API (gauge stations)
 
 License:        Apache-2.0
-URL:            https://github.com/52North/mcp-server-pegelonline-dict-api
+URL:            https://github.com/52North/mcp-server-pegelonline
 Source0:        %{source}
 
 BuildArch:      x86_64
@@ -67,8 +67,9 @@ uv pip install --no-cache --require-hashes \
     -r packaging/requirements.txt
 
 # CycloneDX SBOM, generated from the bundled venv so it reflects exactly what
-# ships (with a full dependency graph). Shipped as %doc.
-uvx --from "cyclonedx-bom>=7.3.0" cyclonedx-py environment \
+# ships (with a full dependency graph). Shipped as %doc. The generator comes
+# from the "sbom" group in uv.lock, so its version is pinned and hash-checked.
+uv run --frozen --only-group sbom cyclonedx-py environment \
     %{buildroot}%{appdir}/venv/bin/python \
     --pyproject pyproject.toml --output-reproducible \
     --output-file %{appname}-bom.json
@@ -79,6 +80,12 @@ install -d -m 0755 %{buildroot}%{appdir}/app
 find pegelonline_mcp -type f ! -name '*.pyc' \
     -exec install -D -m 0644 {} %{buildroot}%{appdir}/app/{} \;
 install -m 0644 openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
+
+# Ship bytecode for the venv and the app: the service user cannot write
+# __pycache__ under %{appdir}, so every start would compile in memory.
+# -s/-p strip the buildroot from the paths recorded in the .pyc files; -f also
+# rewrites the one the SBOM step left behind with the buildroot path in it.
+python3.12 -m compileall -q -f -s %{buildroot} -p / %{buildroot}%{appdir}
 
 # systemd unit
 install -d -m 0755 %{buildroot}%{_unitdir}
@@ -104,6 +111,14 @@ exit 0
 
 %post
 %systemd_post %{appname}.service
+# Older packages let the service user own its config. rpm keeps a locally
+# modified config file on upgrade, owner included, so hand it to root here.
+for f in %{_sysconfdir}/%{appname}/mcp-server.env \
+         %{_sysconfdir}/%{appname}/log-config.yaml; do
+    if [ "$(stat -c %U "$f" 2>/dev/null)" = %{svcuser} ]; then
+        chown root "$f"
+    fi
+done
 
 %preun
 %systemd_preun %{appname}.service
@@ -116,7 +131,7 @@ exit 0
 %doc README.md ROADMAP.md %{appname}-bom.json
 %{_unitdir}/%{appname}.service
 %{appdir}
-%dir %attr(0750, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}
-%dir %attr(0750, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/tls
-%config(noreplace) %attr(0640, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/mcp-server.env
-%config(noreplace) %attr(0640, %{svcuser}, %{svcgroup}) %{_sysconfdir}/%{appname}/log-config.yaml
+%dir %attr(0750, root, %{svcgroup}) %{_sysconfdir}/%{appname}
+%dir %attr(0750, root, %{svcgroup}) %{_sysconfdir}/%{appname}/tls
+%config(noreplace) %attr(0640, root, %{svcgroup}) %{_sysconfdir}/%{appname}/mcp-server.env
+%config(noreplace) %attr(0640, root, %{svcgroup}) %{_sysconfdir}/%{appname}/log-config.yaml

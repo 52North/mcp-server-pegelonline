@@ -1,7 +1,7 @@
 .PHONY:	rpm clean source requirements
 
 NAME = mcp-server-pegelonline
-VERSION ?= 0.1.0
+VERSION ?= $(shell sed -n 's/^version = "\(.*\)"/\1/p' $(PROJECT_ROOT)/pyproject.toml)
 BUILD_NUMBER ?= 1
 SOURCE_NAME = $(NAME)-$(VERSION)
 SOURCE = $(SOURCE_NAME).tar.gz

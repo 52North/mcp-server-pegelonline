@@ -34,12 +34,15 @@ cd packaging
 make rpm
 ```
 
-Override the version/release without editing files:
-`make VERSION=0.2.0 BUILD_NUMBER=2`.
+The version comes from `pyproject.toml` (the spec has no fallback, so build via
+`make`); bump the release without editing files: `make BUILD_NUMBER=2`.
 
 The RPM bundles a self-contained, relocatable virtualenv (`uv venv --relocatable`) plus
 the `pegelonline_mcp` package. Dependencies are installed reproducibly from `packaging/requirements.txt`
-with `uv pip install --require-hashes`.
+with `uv pip install --require-hashes`. Both ship precompiled bytecode, since the
+service user cannot write `__pycache__` below `/opt`. The CycloneDX SBOM is generated
+with the `cyclonedx-bom` version pinned in the `sbom` group of `uv.lock`. The build
+needs network access to PyPI.
 
 ## What the RPM installs
 
@@ -47,10 +50,15 @@ with `uv pip install --require-hashes`.
 |------|-------|-------|
 | `/opt/mcp-server-pegelonline/app/` | root | `pegelonline_mcp/` package (incl. `static/stations_map.html`), openapi json |
 | `/opt/mcp-server-pegelonline/venv/` | root | bundled virtualenv (read-only at runtime) |
-| `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit (`uvicorn pegelonline_mcp.asgi:app`, working directory `app/`) |
-| `/etc/mcp-server-pegelonline/` (dir) | `mcpsvc` | config dir |
-| `/etc/mcp-server-pegelonline/mcp-server.env` | `mcpsvc` | default env config, `%config(noreplace)`; read by the unit's `EnvironmentFile` |
-| `/etc/mcp-server-pegelonline/log-config.yaml` | `mcpsvc` | uvicorn logging config, `%config(noreplace)`; passed via the unit's `--log-config` |
+| `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit (`uvicorn pegelonline_mcp.asgi:app`, working directory `app/`), hardened (read-only system, no capabilities, private `/tmp` and devices, only IP and Unix sockets) |
+| `/etc/mcp-server-pegelonline/` (dir) | `root:mcpsvc` (0750) | config dir |
+| `/etc/mcp-server-pegelonline/tls/` (dir) | `root:mcpsvc` (0750) | not used by the shipped unit |
+| `/etc/mcp-server-pegelonline/mcp-server.env` | `root:mcpsvc` (0640) | default env config, `%config(noreplace)`; read by the unit's `EnvironmentFile` |
+| `/etc/mcp-server-pegelonline/log-config.yaml` | `root:mcpsvc` (0640) | uvicorn logging config, `%config(noreplace)`; passed via the unit's `--log-config` |
+
+The service can read its configuration but not change it. Older packages let
+`mcpsvc` own it; an upgrade hands config files still owned by `mcpsvc` to root
+(`%post`).
 
 The RPM also creates the `mcpsvc` system user/group (`%pre`)
 It does **not** start or enable the service on install (`%systemd_post` presets only).

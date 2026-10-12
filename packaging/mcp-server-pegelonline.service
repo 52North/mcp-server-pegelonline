@@ -14,5 +14,22 @@ WorkingDirectory=/opt/mcp-server-pegelonline/app
 ExecStart=/opt/mcp-server-pegelonline/venv/bin/uvicorn pegelonline_mcp.asgi:app --log-config /etc/mcp-server-pegelonline/log-config.yaml
 Restart=on-failure
 
+# Hardening: the service only reads its files and talks HTTP
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
 [Install]
 WantedBy=multi-user.target
