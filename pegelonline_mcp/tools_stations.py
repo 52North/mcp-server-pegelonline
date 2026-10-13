@@ -16,13 +16,17 @@ from pegelonline_mcp.mapping import (
     timeseries_comment,
     water_name,
 )
+from pegelonline_mcp.models import (
+    NearbyStation,
+    NearbyStations,
+    SearchResult,
+    StationInfo,
+    StationParameter,
+    StationsMap,
+)
 from pegelonline_mcp.resources import MAP_UI_URI
 
 logger = logging.getLogger("pegelonline-dict")
-
-# Fields the text filters match on that station_summary leaves out; returned
-# so the model can tell which substring matches it actually wanted.
-FILTER_FIELDS = ("country", "land", "kreis", "einzugsgebiet")
 
 
 async def search_stations(
@@ -37,7 +41,7 @@ async def search_stations(
     bbox: str | None = None,
     q: str | None = None,
     limit: Count = 50
-) -> dict:
+) -> SearchResult:
     """
     Search for Pegelonline stations using various optional parameters.
     Multiple parameters are combined with AND. Text filters match
@@ -94,12 +98,18 @@ async def search_stations(
         "returned": len(stations),
         "truncated": truncated,
         "stations": [
-            {**station_summary(s), **{k: s.get(k) for k in FILTER_FIELDS}}
+            {
+                **station_summary(s),
+                "country": s.get("country"),
+                "land": s.get("land"),
+                "kreis": s.get("kreis"),
+                "einzugsgebiet": s.get("einzugsgebiet"),
+            }
             for s in stations
         ],
     }
 
-async def get_station_info(uuid: str) -> dict:
+async def get_station_info(uuid: str) -> StationInfo:
     """
     Fetch static metadata for a specific station (name, agency, coordinates,
     water body, gauge zero and available observation parameters with their
@@ -111,7 +121,7 @@ async def get_station_info(uuid: str) -> dict:
     logger.info("get_station_info: uuid=%s", uuid)
     data = await client.fetch_station(uuid)
 
-    parameters = [
+    parameters: list[StationParameter] = [
         {
             **parameter_info(ts),
             "equidistance_minutes": ts.get("equidistance"),
@@ -140,14 +150,14 @@ async def get_station_info(uuid: str) -> dict:
 
 async def _fetch_nearest_stations(
     latitude: float, longitude: float, radius_km: float, limit: int
-) -> dict:
+) -> NearbyStations:
     """Fetch stations around a coordinate, sorted nearest-first."""
     # The dict API has no radius filter but supports a bounding box and
     # enriches each station with its MQTT topic and timeseries. Query the
     # box enclosing the radius, then filter precisely by distance.
     min_lon, min_lat, max_lon, max_lat = bbox_around(latitude, longitude, radius_km)
     bbox = f"{min_lon},{min_lat},{max_lon},{max_lat}"
-    stations = []
+    stations: list[NearbyStation] = []
     for s in await client.search({"bbox": bbox}):
         if s.get("latitude") is None or s.get("longitude") is None:
             continue
@@ -174,7 +184,7 @@ async def find_nearest_stations(
     longitude: Longitude,
     radius_km: RadiusKm = 25,
     limit: Count = 10
-) -> dict:
+) -> NearbyStations:
     """
     Find gauge stations near a geographic coordinate, sorted by distance
     (nearest first).
@@ -196,7 +206,7 @@ async def show_stations_map(
     longitude: Longitude,
     radius_km: RadiusKm = 25,
     limit: Count = 50
-) -> dict:
+) -> StationsMap:
     """
     Show an interactive map of all gauge stations within a search radius
     around a geographic coordinate. In MCP-Apps-capable clients the map is

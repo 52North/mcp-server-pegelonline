@@ -1,6 +1,6 @@
 """Mapping helpers that turn upstream station JSON into tool responses."""
 
-from typing import Any
+from pegelonline_mcp.models import ParameterInfo, StationSummary
 
 
 def normalize_timeseries(station: dict) -> list[dict]:
@@ -26,7 +26,7 @@ def water_name(station: dict) -> str | None:
     return water.get("longname")
 
 
-def parameter_info(ts: dict) -> dict[str, Any]:
+def parameter_info(ts: dict) -> ParameterInfo:
     """Short description of an observation parameter (timeseries)."""
     return {
         "shortname": ts.get("shortname"),
@@ -47,7 +47,7 @@ def timeseries_comment(ts: dict) -> str | None:
     return comment.get("longDescription") or comment.get("shortDescription")
 
 
-def station_summary(station: dict) -> dict[str, Any]:
+def station_summary(station: dict) -> StationSummary:
     """Compact station description with its observation parameters."""
     return {
         "uuid": station.get("uuid"),

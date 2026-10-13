@@ -7,6 +7,7 @@ from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.http_client import get_json
+from pegelonline_mcp.models import Measurement
 
 logger = logging.getLogger("pegelonline-dict")
 
@@ -58,7 +59,7 @@ async def fetch_timeseries(uuid: str, parameter: str) -> dict:
     return await get_json(f"{_timeseries_url(uuid, parameter)}.json")
 
 
-async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict]:
+async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[Measurement]:
     """The last ``count`` measurements of a station parameter, most recent first."""
     url = _measurements_url(uuid, parameter)
 
@@ -83,7 +84,7 @@ async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[dict
 
 async def fetch_measurements_within(
     uuid: str, parameter: str, minutes: int
-) -> list[dict]:
+) -> list[Measurement]:
     """Measurements of a station parameter within the last ``minutes``.
 
     Most recent first, like ``fetch_measurements``.

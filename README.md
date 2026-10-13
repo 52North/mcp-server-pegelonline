@@ -148,6 +148,11 @@ All tools only read from the Pegelonline APIs and are annotated with
 `readOnlyHint` and `openWorldHint`, so clients can allow them without asking
 for confirmation.
 
+Each tool publishes an output schema that describes its response, generated from
+the types in [`pegelonline_mcp/models.py`](pegelonline_mcp/models.py). The server
+validates every response against it. Fields taken from the upstream APIs may be
+`null`, since some stations lack e.g. coordinates or a district.
+
 ### `search_stations`
 
 Searches for stations with the following optional parameters:

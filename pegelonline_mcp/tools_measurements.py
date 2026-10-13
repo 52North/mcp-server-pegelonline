@@ -9,6 +9,12 @@ from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.constraints import Count, Hours
 from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, water_name
+from pegelonline_mcp.models import (
+    LatestMeasurement,
+    LatestMeasurements,
+    RecentMeasurements,
+    SpanCounts,
+)
 
 logger = logging.getLogger("pegelonline-dict")
 
@@ -18,7 +24,7 @@ logger = logging.getLogger("pegelonline-dict")
 MAX_SPAN_VALUES = 24 * 60
 
 
-async def get_latest_measurements(uuid: str) -> dict:
+async def get_latest_measurements(uuid: str) -> LatestMeasurements:
     """
     Fetch the latest measurements (e.g., water level, flow, temperature) for a specific station.
     Each measurement carries the comment on its timeseries, e.g. a disturbance or why
@@ -40,7 +46,7 @@ async def get_latest_measurements(uuid: str) -> dict:
     data = await client.fetch_station(uuid, current=True)
 
     # Clean up the response to only return relevant measurement data
-    measurements = []
+    measurements: list[LatestMeasurement] = []
     for ts in normalize_timeseries(data):
         curr = ts.get("currentMeasurement")
         if curr:
@@ -69,7 +75,7 @@ async def get_latest_measurements(uuid: str) -> dict:
 
 async def get_recent_measurements(
     uuid: str, parameter: str, count: Count = 2, hours: Hours | None = None
-) -> dict:
+) -> RecentMeasurements:
     """
     Fetch the most recent measurements for a specific parameter of a station.
     Values are given in unit, which differs between timeseries: water levels
@@ -92,7 +98,7 @@ async def get_recent_measurements(
     )
     # Fetched first, so an unknown parameter fails with a single 404
     timeseries = await client.fetch_timeseries(uuid, parameter)
-    truncation: dict[str, int | bool] = {}
+    span: SpanCounts = {}
     if hours is None:
         recent = await client.fetch_measurements(uuid, parameter, count)
     else:
@@ -100,7 +106,7 @@ async def get_recent_measurements(
             uuid, parameter, math.ceil(hours * 60)
         )
         recent = in_span[:MAX_SPAN_VALUES]
-        truncation = {
+        span = {
             "total_matches": len(in_span),
             "returned": len(recent),
             "truncated": len(in_span) > len(recent),
@@ -115,7 +121,7 @@ async def get_recent_measurements(
         "parameter": parameter,
         "unit": timeseries.get("unit"),
         "comment": timeseries_comment(timeseries),
-        **truncation,
+        **span,
         "measurements": recent
     }
 

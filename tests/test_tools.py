@@ -79,6 +79,22 @@ async def test_search_stations_is_compact(client, respx_mock):
     assert "pegelonlinelinks" not in data
 
 
+async def test_search_stations_tolerates_missing_fields(client, respx_mock):
+    # Live, some stations lack a district, catchment area or state. The server
+    # validates every response against the output schema, so the schema has to
+    # allow that or the whole call fails.
+    data = load_fixture("search_rhein")
+    for key in ("kreis", "einzugsgebiet", "land", "water", "mqtttopic"):
+        del data["stations"][0][key]
+    respx_mock.get(SEARCH_URL).respond(json=data)
+
+    result = await client.call_tool("search_stations", {"gewaesser": "Rhein"})
+
+    station = result.structured_content["stations"][0]
+    for key in ("kreis", "einzugsgebiet", "land", "water", "mqtttopic"):
+        assert station[key] is None, key
+
+
 async def test_get_station_info(client, respx_mock, snapshot_json):
     route = respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
 
@@ -86,6 +102,26 @@ async def test_get_station_info(client, respx_mock, snapshot_json):
 
     assert route.calls.last.request.url.params["includeTimeseries"] == "true"
     assert result.structured_content == snapshot_json
+
+
+async def test_get_station_info_tolerates_missing_fields(client, respx_mock):
+    # Live, some stations lack coordinates or a river kilometer
+    station = load_fixture("station_koeln")
+    for key in ("km", "latitude", "longitude", "water"):
+        del station[key]
+    for ts in station["timeseries"]:
+        for key in ("equidistance", "gaugeZero", "comment"):
+            ts.pop(key, None)
+    respx_mock.get(STATION_URL).respond(json=station)
+
+    result = await client.call_tool("get_station_info", {"uuid": KOELN_UUID})
+
+    data = result.structured_content
+    for key in ("km", "latitude", "longitude", "water"):
+        assert data[key] is None, key
+    for parameter in data["parameters"]:
+        for key in ("equidistance_minutes", "gaugeZero", "comment"):
+            assert parameter[key] is None, key
 
 
 async def test_find_nearest_stations(client, respx_mock, snapshot_json):
@@ -321,6 +357,39 @@ async def test_hours_constraints_in_tool_schema(client):
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
     assert {"exclusiveMinimum": 0, "maximum": 840}.items() <= number.items()
+
+
+@pytest.mark.parametrize(
+    ("tool", "properties"),
+    [
+        ("search_stations", {"total_matches", "returned", "truncated", "stations"}),
+        (
+            "get_station_info",
+            {
+                "uuid", "number", "shortname", "longname", "agency",
+                "longitude", "latitude", "km", "water", "parameters",
+            },
+        ),
+        ("find_nearest_stations", {"total_matches", "returned", "truncated", "stations"}),
+        (
+            "show_stations_map",
+            {"center", "radius_km", "total_matches", "returned", "truncated", "stations"},
+        ),
+        ("get_latest_measurements", {"station", "water", "measurements"}),
+        (
+            "get_recent_measurements",
+            {
+                "uuid", "parameter", "unit", "comment",
+                "total_matches", "returned", "truncated", "measurements",
+            },
+        ),
+    ],
+)
+async def test_output_schema_describes_response(client, tool, properties):
+    # A plain dict return type would publish only an open object schema
+    tools = {t.name: t for t in await client.list_tools()}
+
+    assert set(tools[tool].outputSchema["properties"]) == properties
 
 
 async def test_tools_are_annotated_read_only(client):
