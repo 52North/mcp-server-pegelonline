@@ -14,6 +14,8 @@ Pegelonline REST API.
 - **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
   the latest values, `get_measurement_history` any span of the last 31 days as
   compact rows or hourly and daily summaries; all with unit and timeseries comment.
+- **Charts**: `get_measurements_chart` returns the official line chart of such a
+  span as an image for the model, about 480 image tokens whatever the span.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
   (MCP App) in Claude Desktop and claude.ai.
 - **Resources**: water bodies, federal states and the stations per state.
@@ -100,12 +102,14 @@ claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonlin
 ```
 
 Note: Claude Code is a CLI and does not render MCP Apps — the `show_stations_map`
-tool falls back to its structured station list there.
+tool falls back to its structured station list there. Nor does it display images:
+the chart from `get_measurements_chart` reaches only the model.
 
 ### Registering with Claude Desktop
 
 Claude Desktop supports MCP Apps, so `show_stations_map` renders the interactive
-Leaflet map inline. Add the server to `%APPDATA%\Claude\claude_desktop_config.json`
+Leaflet map inline. The chart from `get_measurements_chart`, by contrast, appears only
+inside the expanded tool call. Add the server to `%APPDATA%\Claude\claude_desktop_config.json`
 (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
@@ -149,10 +153,12 @@ All tools only read from the Pegelonline APIs and are annotated with
 `readOnlyHint` and `openWorldHint`, so clients can allow them without asking
 for confirmation.
 
-Each tool publishes an output schema that describes its response, generated from
-the types in [`pegelonline_mcp/models.py`](pegelonline_mcp/models.py). The server
-validates every response against it. Fields taken from the upstream APIs may be
-`null`, since some stations lack e.g. coordinates or a district.
+Each tool except `get_measurements_chart` publishes an output schema that describes
+its response, generated from the types in
+[`pegelonline_mcp/models.py`](pegelonline_mcp/models.py). The server validates every
+such response against it. Fields taken from the upstream APIs may be `null`, since
+some stations lack e.g. coordinates or a district. `get_measurements_chart` returns
+MCP image content (`image/png`) instead.
 
 ### `search_stations`
 
@@ -246,6 +252,23 @@ their timestamps, and `mean`. The response also carries the timeseries' `unit`,
 The largest responses reach about 48 000 characters. The tool sets
 `_meta["anthropic/maxResultSizeChars"]` to 60 000, so Claude Code keeps them in
 context instead of moving them to a file.
+
+### `get_measurements_chart`
+
+Returns the official API's line chart of one parameter of a station as a PNG image
+(900 × 400 pixels), for the same time spans as `get_measurement_history`: the last
+`hours` (default: 24) or a window from `start` to `end`. The model sees the course
+at a glance, with gaps and labeled reference lines such as NNW or MThw, for about
+480 image tokens whatever the span; the PNG itself grows to about 190 KB for 35 days
+of a 1-minute series. Exact values come from `get_measurement_history`.
+
+The chart has no title, unit or legend: the y-axis shows the values in the
+timeseries' unit with a decimal comma, the x-axis German local time. A span without
+values gives an empty grid, not an error. Some gauges add a dashed line, e.g. a
+forecast; the measured values are the solid line.
+
+The tool sends a single request, so an unknown station or parameter fails with the
+usual 404 hint, and a response that is not `image/png` becomes an error.
 
 ### `find_nearest_stations`
 

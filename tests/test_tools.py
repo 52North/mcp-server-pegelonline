@@ -4,6 +4,7 @@ The structured tool results are frozen as JSON snapshots so later refactoring
 steps can prove the responses stay identical.
 """
 
+import base64
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -11,8 +12,11 @@ from zoneinfo import ZoneInfo
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
+from mcp.types import ImageContent
 
 from conftest import (
+    CHART_PNG,
+    CHART_URL,
     KOELN_UUID,
     MEASUREMENTS_URL,
     SEARCH_URL,
@@ -34,6 +38,21 @@ BERLIN = ZoneInfo("Europe/Berlin")
 NOW = datetime.now(UTC).replace(microsecond=0)
 START = (NOW - timedelta(days=2)).astimezone(BERLIN)
 END = START + timedelta(hours=6)
+
+# Tools that take a time window, by hours or by start and end
+WINDOW_TOOLS = ["get_measurement_history", "get_measurements_chart"]
+# Window arguments and the query parameters the API receives for them:
+# hours counts back from the API's now, a window is sent as given
+WINDOW_PARAMS = [
+    pytest.param({"hours": 1.5}, {"start": "PT90M"}, id="hours"),
+    pytest.param({"start": START.isoformat()}, {"start": START.isoformat()}, id="start"),
+    pytest.param(
+        {"start": START.isoformat(), "end": END.isoformat()},
+        {"start": START.isoformat(), "end": END.isoformat()},
+        id="start-end",
+    ),
+]
+CHART_SIZE = {"width": "900", "height": "400"}
 
 
 @pytest.fixture
@@ -310,18 +329,7 @@ async def test_get_measurement_history(client, respx_mock, timeseries_w, snapsho
     assert result.structured_content == snapshot_json
 
 
-@pytest.mark.parametrize(
-    ("window", "params"),
-    [
-        ({"hours": 1.5}, {"start": "PT90M"}),
-        ({"start": START.isoformat()}, {"start": START.isoformat()}),
-        (
-            {"start": START.isoformat(), "end": END.isoformat()},
-            {"start": START.isoformat(), "end": END.isoformat()},
-        ),
-    ],
-    ids=["hours", "start", "start-end"],
-)
+@pytest.mark.parametrize(("window", "params"), WINDOW_PARAMS)
 async def test_get_measurement_history_requests_window(
     client, respx_mock, timeseries_w, window, params
 ):
@@ -329,7 +337,6 @@ async def test_get_measurement_history_requests_window(
 
     await client.call_tool("get_measurement_history", {**KOELN_W, **window})
 
-    # hours counts back from the API's now, a window is sent as given
     assert dict(route.calls.last.request.url.params) == params
 
 
@@ -351,10 +358,11 @@ async def test_get_measurement_history_requests_window(
         "start-in-future", "start-too-old", "window-too-long",
     ],
 )
-async def test_get_measurement_history_rejects_window(client, respx_mock, window, message):
+@pytest.mark.parametrize("tool", WINDOW_TOOLS)
+async def test_invalid_time_windows_are_rejected(client, respx_mock, tool, window, message):
     # Rejected before any upstream request, which respx would refuse unmocked
     with pytest.raises(ToolError, match=message):
-        await client.call_tool("get_measurement_history", {**KOELN_W, **window})
+        await client.call_tool(tool, {**KOELN_W, **window})
 
 
 async def test_get_measurement_history_marks_gaps(client, respx_mock):
@@ -519,6 +527,51 @@ async def test_get_measurement_history_without_grid_summarizes_per_hour(
     assert data["summary"]["missing"] is None
 
 
+async def test_get_measurements_chart(client, respx_mock):
+    # Only the chart is mocked, and respx refuses any other request: the tool
+    # fetches no timeseries metadata first
+    route = respx_mock.get(CHART_URL).respond(content=CHART_PNG, content_type="image/png")
+
+    result = await client.call_tool("get_measurements_chart", KOELN_W)
+
+    # The last 24 hours by default
+    assert dict(route.calls.last.request.url.params) == {"start": "PT1440M", **CHART_SIZE}
+    assert result.content == [
+        ImageContent(
+            type="image", data=base64.b64encode(CHART_PNG).decode(), mimeType="image/png"
+        )
+    ]
+    assert result.structured_content is None
+
+
+@pytest.mark.parametrize(("window", "params"), WINDOW_PARAMS)
+async def test_get_measurements_chart_requests_window(client, respx_mock, window, params):
+    route = respx_mock.get(CHART_URL).respond(content=CHART_PNG, content_type="image/png")
+
+    await client.call_tool("get_measurements_chart", {**KOELN_W, **window})
+
+    assert dict(route.calls.last.request.url.params) == params | CHART_SIZE
+
+
+@pytest.mark.parametrize(
+    ("response", "message"),
+    [
+        (
+            httpx.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
+            "check that the station UUID",
+        ),
+        # E.g. a maintenance page delivered with status 200
+        (httpx.Response(200, html="<html>Wartungsarbeiten</html>"), "no PNG image.*text/html"),
+    ],
+    ids=["unknown-parameter", "no-png"],
+)
+async def test_get_measurements_chart_upstream_errors(client, respx_mock, response, message):
+    respx_mock.get(CHART_URL).mock(return_value=response)
+
+    with pytest.raises(ToolError, match=message):
+        await client.call_tool("get_measurements_chart", KOELN_W)
+
+
 async def test_upstream_404_raises_tool_error(client, respx_mock):
     respx_mock.get(STATION_URL).respond(404)
 
@@ -572,6 +625,8 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         # Without an offset, the time is ambiguous
         ("get_measurement_history", {**KOELN_W, "start": "2026-09-20T00:00"}, "start"),
         ("get_measurement_history", {**KOELN_W, "resolution": "minute"}, "resolution"),
+        ("get_measurements_chart", {**KOELN_W, "hours": 841}, "hours"),
+        ("get_measurements_chart", {**KOELN_W, "start": "2026-09-20T00:00"}, "start"),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
@@ -601,22 +656,30 @@ async def test_constraints_in_tool_schema(client, tool, argument, constraint):
     assert constraint.items() <= schema.items()
 
 
-async def test_hours_constraints_in_tool_schema(client):
+@pytest.mark.parametrize("tool", WINDOW_TOOLS)
+async def test_hours_constraints_in_tool_schema(client, tool):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools["get_measurement_history"].inputSchema["properties"]["hours"]
+    schema = tools[tool].inputSchema["properties"]["hours"]
 
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
     assert {"exclusiveMinimum": 0, "maximum": 840}.items() <= number.items()
 
 
-async def test_history_window_in_tool_schema(client):
+@pytest.mark.parametrize("tool", WINDOW_TOOLS)
+async def test_window_in_tool_schema(client, tool):
     tools = {t.name: t for t in await client.list_tools()}
-    properties = tools["get_measurement_history"].inputSchema["properties"]
+    properties = tools[tool].inputSchema["properties"]
 
     for argument in ("start", "end"):
         assert {"type": "string", "format": "date-time"} in properties[argument]["anyOf"]
-    assert properties["resolution"]["enum"] == ["auto", "raw", "hour", "day"]
+
+
+async def test_resolution_in_tool_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+    schema = tools["get_measurement_history"].inputSchema["properties"]["resolution"]
+
+    assert schema["enum"] == ["auto", "raw", "hour", "day"]
 
 
 async def test_history_allows_large_results(client):
@@ -664,6 +727,13 @@ async def test_output_schema_describes_response(client, tool, properties):
     assert set(tools[tool].outputSchema["properties"]) == properties
 
 
+async def test_chart_has_no_output_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+
+    # It returns image content, not structured data
+    assert tools["get_measurements_chart"].outputSchema is None
+
+
 async def test_tools_are_annotated_read_only(client):
     tools = await client.list_tools()
 
@@ -675,6 +745,7 @@ async def test_tools_are_annotated_read_only(client):
         "get_latest_measurements",
         "get_recent_measurements",
         "get_measurement_history",
+        "get_measurements_chart",
     }
     for tool in tools:
         assert tool.annotations.readOnlyHint is True, tool.name

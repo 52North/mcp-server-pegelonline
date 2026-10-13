@@ -47,11 +47,11 @@ async def _get(url: str, params: dict | None) -> httpx.Response:
             attempt += 1
 
 
-async def get_json(url: str, params: dict | None = None) -> Any:
-    """GET a JSON document.
+async def _get_checked(url: str, params: dict | None) -> httpx.Response:
+    """GET a successful response, logged with its duration.
 
     Failed connection attempts are retried up to CONNECT_RETRIES times.
-    Transport errors, HTTP errors and invalid JSON become clear MCP errors.
+    Transport and HTTP errors become clear MCP errors.
     """
     logger.info("GET %s params=%s", url, params)
     start = time.monotonic()
@@ -79,6 +79,12 @@ async def get_json(url: str, params: dict | None = None) -> Any:
         "GET %s -> %s (%.0f ms)", url, response.status_code,
         (time.monotonic() - start) * 1000,
     )
+    return response
+
+
+async def get_json(url: str, params: dict | None = None) -> Any:
+    """GET a JSON document; invalid JSON becomes a clear MCP error."""
+    response = await _get_checked(url, params)
     try:
         return response.json()
     except ValueError as exc:
@@ -88,3 +94,17 @@ async def get_json(url: str, params: dict | None = None) -> Any:
             f"Upstream API returned no valid JSON for {url} "
             f"(content type: {content_type})."
         ) from exc
+
+
+async def get_png(url: str, params: dict | None = None) -> bytes:
+    """GET a PNG image; any other content type becomes a clear MCP error."""
+    response = await _get_checked(url, params)
+    content_type = response.headers.get("content-type", "unknown")
+    # Parameters such as "; charset=UTF-8" do not change the type
+    if content_type.partition(";")[0].strip().lower() != "image/png":
+        logger.warning("GET %s returned no PNG (%s)", url, content_type)
+        raise ToolError(
+            f"Upstream API returned no PNG image for {url} "
+            f"(content type: {content_type})."
+        )
+    return response.content

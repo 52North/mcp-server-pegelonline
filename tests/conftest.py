@@ -21,7 +21,11 @@ SEARCH_URL = f"{BASE_URL}/search"
 STATION_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}.json"
 TIMESERIES_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W.json"
 MEASUREMENTS_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W/measurements.json"
+CHART_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W/measurements.png"
 WATERS_URL = f"{OFFICIAL_API_URL}/waters.json"
+
+# Nothing decodes a chart, so the PNG signature stands in for a whole image
+CHART_PNG = b"\x89PNG\r\n\x1a\nchart"
 
 
 def load_fixture(name: str) -> Any:

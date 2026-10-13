@@ -1,13 +1,13 @@
 """Tools that fetch measurement values of a station."""
 
 import logging
-import math
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from statistics import fmean
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.utilities.types import Image
 from pydantic import AwareDatetime
 
 from pegelonline_mcp import client
@@ -27,7 +27,7 @@ from pegelonline_mcp.models import (
 
 logger = logging.getLogger(__name__)
 
-# Time span of get_measurement_history without hours or start
+# Time span of the history and the chart without hours or start
 DEFAULT_HOURS = 24
 # How far back a time window may start and how long it may be, like hours
 MAX_WINDOW = timedelta(minutes=HISTORY_MINUTES)
@@ -136,16 +136,19 @@ async def get_recent_measurements(
     }
 
 
-def _check_window(
+def _window_start(
     hours: float | None, start: datetime | None, end: datetime | None
-) -> None:
-    """Reject a time span that mixes hours and start or that the API cannot serve."""
+) -> datetime | timedelta:
+    """Start of the time window to fetch: start itself, or hours back from now.
+
+    Rejects a window that mixes hours and start or that the API cannot serve.
+    """
     if hours is not None and start is not None:
         raise ToolError("Pass either hours or start, not both.")
     if start is None:
         if end is not None:
             raise ToolError("end needs start; for the last N hours, pass hours alone.")
-        return
+        return timedelta(hours=hours or DEFAULT_HOURS)
     now = datetime.now(UTC)
     end = end or now
     if start >= end:
@@ -159,6 +162,7 @@ def _check_window(
         raise ToolError(
             f"start and end may lie at most {HISTORY_MINUTES // 60} hours apart."
         )
+    return start
 
 
 def _points(measurements: list[Measurement]) -> list[Point]:
@@ -338,16 +342,10 @@ async def get_measurement_history(
         "resolution=%s",
         uuid, parameter, hours, start, end, resolution,
     )
-    _check_window(hours, start, end)
+    since = _window_start(hours, start, end)
     # Fetched first, so an unknown parameter fails with a single 404
     timeseries = await client.fetch_timeseries(uuid, parameter)
-    if start is None:
-        minutes = math.ceil((hours or DEFAULT_HOURS) * 60)
-        measurements = await client.fetch_measurements_within(uuid, parameter, minutes)
-    else:
-        measurements = await client.fetch_measurements_between(
-            uuid, parameter, start, end
-        )
+    measurements = await client.fetch_measurements_since(uuid, parameter, since, end)
     points = _points(measurements)
     interval = timeseries.get("equidistance")
     grid = _grid(interval, points)
@@ -368,6 +366,57 @@ async def get_measurement_history(
     }
 
 
+async def get_measurements_chart(
+    uuid: str,
+    parameter: str,
+    hours: Hours | None = None,
+    start: AwareDatetime | None = None,
+    end: AwareDatetime | None = None,
+) -> Image:
+    """
+    Fetch the official API's line chart (PNG, 900 × 400 pixels) of one
+    parameter of a station over a time span: by default the last 24 hours,
+    at most 35 days back. Use it to see the course at a glance: trend,
+    peaks, magnitude and gaps. It costs the same few hundred tokens for any
+    span. Values read off it are approximate; exact values, timestamps and
+    the timeseries comment come from get_measurement_history.
+
+    The chart has no title, unit or legend. The y-axis shows the values in
+    the timeseries' unit (see get_station_info) with a decimal comma, the
+    x-axis German local time. Labeled horizontal lines are reference values
+    such as NNW or MThw. Gaps break the line, and an empty grid means no
+    values in the span. Some gauges add a dashed, lighter line, e.g. a
+    forecast that can reach past now; the measured values are the solid line.
+
+    The user may not see the image: some clients do not show it, others only
+    inside the collapsed tool call. So describe what it shows in words.
+
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+        parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
+        hours: The last N hours (e.g., 168 for a week); default 24 unless
+            start is given.
+        start: Start of a time window instead of hours, with UTC offset:
+            e.g., '2026-09-20T00:00+02:00' in summer, '2026-12-01T00:00+01:00'
+            in winter.
+        end: End of the window, with UTC offset (default: now); only with
+            start. Both ends are included, at most 840 hours apart.
+    """
+    logger.info(
+        "get_measurements_chart: uuid=%s parameter=%s hours=%s start=%s end=%s",
+        uuid, parameter, hours, start, end,
+    )
+    since = _window_start(hours, start, end)
+    # No metadata first: the chart request itself fails with a single 404
+    # for an unknown station or parameter
+    png = await client.fetch_measurements_chart(uuid, parameter, since, end)
+    logger.info(
+        "get_measurements_chart: uuid=%s parameter=%s -> %d bytes",
+        uuid, parameter, len(png),
+    )
+    return Image(data=png, format="png")
+
+
 def register(mcp: FastMCP) -> None:
     """Register the measurement tools on the server."""
     mcp.tool(get_latest_measurements, annotations=READ_ONLY)
@@ -378,3 +427,4 @@ def register(mcp: FastMCP) -> None:
         annotations=READ_ONLY,
         meta={"anthropic/maxResultSizeChars": MAX_RESULT_CHARS},
     )
+    mcp.tool(get_measurements_chart, annotations=READ_ONLY)

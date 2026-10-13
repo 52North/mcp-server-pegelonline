@@ -1,4 +1,4 @@
-"""Tests for the shared HTTP client: identification and connection retries."""
+"""Tests for the shared HTTP client: identification, connection retries and PNGs."""
 
 import tomllib
 from pathlib import Path
@@ -7,9 +7,9 @@ import httpx
 import pytest
 from fastmcp.exceptions import ToolError
 
-from conftest import STATION_URL
+from conftest import CHART_PNG, CHART_URL, STATION_URL
 from pegelonline_mcp import __version__
-from pegelonline_mcp.http_client import CONNECT_RETRIES, get_json
+from pegelonline_mcp.http_client import CONNECT_RETRIES, get_json, get_png
 
 
 async def test_requests_identify_the_server(respx_mock):
@@ -60,6 +60,42 @@ async def test_other_failures_are_not_retried(respx_mock, mock):
     with pytest.raises(ToolError):
         await get_json(STATION_URL)
     assert route.call_count == 1
+
+
+@pytest.mark.parametrize("content_type", ["image/png", "image/png; charset=UTF-8"])
+async def test_get_png_returns_the_image(respx_mock, content_type):
+    respx_mock.get(CHART_URL).respond(content=CHART_PNG, content_type=content_type)
+
+    assert await get_png(CHART_URL) == CHART_PNG
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, html="<html>Wartungsarbeiten</html>"),
+        httpx.Response(200, json={"status": 200}),
+        httpx.Response(200, content=CHART_PNG),
+    ],
+    ids=["html", "json", "no-content-type"],
+)
+async def test_get_png_rejects_other_content(respx_mock, response):
+    respx_mock.get(CHART_URL).mock(return_value=response)
+
+    with pytest.raises(ToolError, match="no PNG image"):
+        await get_png(CHART_URL)
+
+
+async def test_get_png_shares_retries_and_errors(respx_mock):
+    route = respx_mock.get(CHART_URL).mock(
+        side_effect=[
+            httpx.ConnectError("connection refused"),
+            httpx.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
+        ]
+    )
+
+    with pytest.raises(ToolError, match="404.*check that the station UUID"):
+        await get_png(CHART_URL)
+    assert route.call_count == 2
 
 
 def test_version_matches_pyproject():

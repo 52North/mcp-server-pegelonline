@@ -22,22 +22,28 @@ Workflow:
   instead when the user asks for a map.
 - The location tools expect WGS84 coordinates, not place names: resolve the
   place to latitude/longitude yourself before calling them.
-- Use the station uuid from those results for get_station_info,
-  get_latest_measurements, get_recent_measurements and get_measurement_history.
+- Use the station uuid from those results for get_station_info and the
+  measurement tools: get_latest_measurements, get_recent_measurements,
+  get_measurement_history and get_measurements_chart.
 - For a time span (e.g., the last 24 hours, a week or a past day), call
   get_measurement_history instead of estimating a count for
   get_recent_measurements: measurement intervals differ per timeseries (1, 5,
   10, 15 or 60 minutes; equidistance_minutes in get_station_info). The
   official API keeps a little over 31 days. Long spans of short-interval
   series come as hourly min/mean/max; resolution in the response says so.
+- To see how a parameter developed (trend, peaks, reference lines such as
+  NNW), call get_measurements_chart: a chart image that costs the same few
+  hundred tokens for any span. Take exact values from get_measurement_history,
+  and describe the chart in words, since the user may not see it.
 
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),
   not water depth. Absolute height = gaugeZero (m above NHN) + W / 100.
   Some stations, mostly on canals, report W directly in m+NN; the unit
-  returned with every measurement tool's values tells which.
+  returned with the measured values tells which.
 - Discharge Q may be missing, stale or unreliable at low water; compare
-  timestamps. The measurement tools and get_station_info return a comment per
+  timestamps. get_station_info, get_latest_measurements,
+  get_recent_measurements and get_measurement_history return a comment per
   timeseries that explains such cases and reports disturbances or stations
   out of service.
 - Measurements are raw data (Rohdaten) and unverified; small jumps of about

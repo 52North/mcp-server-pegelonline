@@ -7,6 +7,8 @@ import pytest
 from fastmcp.exceptions import ToolError
 
 from conftest import (
+    CHART_PNG,
+    CHART_URL,
     KOELN_UUID,
     MEASUREMENTS_URL,
     SEARCH_URL,
@@ -16,6 +18,8 @@ from conftest import (
     load_fixture,
 )
 from pegelonline_mcp import client
+
+CEST = timezone(timedelta(hours=2))
 
 
 async def test_search_without_stations_key(respx_mock):
@@ -69,7 +73,9 @@ async def test_fetch_station_accepts_numbers_and_names(respx_mock, identifier, s
 async def test_path_segments_are_escaped(respx_mock):
     route = respx_mock.get().respond(json=[])
 
-    await client.fetch_measurements_within("../../waters", "W?start=P31D#", 60)
+    await client.fetch_measurements_since(
+        "../../waters", "W?start=P31D#", timedelta(minutes=60)
+    )
 
     # The request stays below /stations/ and keeps its own query string
     assert route.calls.last.request.url.raw_path.endswith(
@@ -83,10 +89,11 @@ async def test_path_segments_are_escaped(respx_mock):
     [
         lambda: client.fetch_station(".."),
         lambda: client.fetch_measurements("..", "W", 2),
-        lambda: client.fetch_measurements_within(KOELN_UUID, "", 60),
+        lambda: client.fetch_measurements_since(KOELN_UUID, "", timedelta(hours=1)),
+        lambda: client.fetch_measurements_chart("..", "W", timedelta(hours=1)),
         lambda: client.fetch_timeseries(KOELN_UUID, ".."),
     ],
-    ids=["station", "measurements", "measurements-within", "timeseries"],
+    ids=["station", "measurements", "measurements-since", "chart", "timeseries"],
 )
 async def test_dot_only_segments_are_rejected(respx_mock, call):
     # Escaping leaves dots alone, so ".." would still climb up the path
@@ -103,33 +110,58 @@ async def test_fetch_measurements_most_recent_first(respx_mock):
     assert recent == [measurements[-1], measurements[-2]]
 
 
-async def test_fetch_measurements_within(respx_mock):
+@pytest.mark.parametrize(
+    ("start", "end", "params"),
+    [
+        (timedelta(hours=24), None, {"start": "PT1440M"}),
+        # Rounded up, since PT0M would cover no time at all
+        (timedelta(seconds=1), None, {"start": "PT1M"}),
+        (
+            datetime(2026, 10, 6, 12, 0, tzinfo=CEST),
+            None,
+            {"start": "2026-10-06T12:00:00+02:00"},
+        ),
+        (
+            datetime(2026, 10, 6, 12, 0, tzinfo=CEST),
+            datetime(2026, 10, 6, 14, 0, tzinfo=CEST),
+            {"start": "2026-10-06T12:00:00+02:00", "end": "2026-10-06T14:00:00+02:00"},
+        ),
+    ],
+    ids=["span", "span-rounded-up", "start", "start-end"],
+)
+async def test_fetch_measurements_since(respx_mock, start, end, params):
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
 
-    recent = await client.fetch_measurements_within(KOELN_UUID, "W", 1440)
+    recent = await client.fetch_measurements_since(KOELN_UUID, "W", start, end)
 
-    assert route.calls.last.request.url.params["start"] == "PT1440M"
+    assert dict(route.calls.last.request.url.params) == params
+    # Oldest first, as the API returns them
     assert recent == measurements
 
 
-async def test_fetch_measurements_between(respx_mock):
-    measurements = load_fixture("measurements_w")
-    route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
-    start = datetime(2026, 10, 6, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+async def test_window_timestamps_keep_their_offset(respx_mock):
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=[])
 
-    recent = await client.fetch_measurements_between(
-        KOELN_UUID, "W", start, start + timedelta(hours=2)
+    await client.fetch_measurements_since(
+        KOELN_UUID, "W", datetime(2026, 10, 6, 12, 0, tzinfo=CEST)
     )
 
-    request = route.calls.last.request
-    assert dict(request.url.params) == {
-        "start": "2026-10-06T12:00:00+02:00",
-        "end": "2026-10-06T14:00:00+02:00",
-    }
     # An unescaped "+" would reach the API as a space
-    assert b"%2B02%3A00" in request.url.query
-    assert recent == measurements
+    assert b"%2B02%3A00" in route.calls.last.request.url.query
+
+
+async def test_fetch_measurements_chart(respx_mock):
+    route = respx_mock.get(CHART_URL).respond(content=CHART_PNG, content_type="image/png")
+
+    png = await client.fetch_measurements_chart(KOELN_UUID, "W", timedelta(hours=24))
+
+    assert dict(route.calls.last.request.url.params) == {
+        "start": "PT1440M",
+        "width": "900",
+        "height": "400",
+    }
+    assert png == CHART_PNG
 
 
 async def test_fetch_measurements_falls_back_to_full_history(respx_mock):

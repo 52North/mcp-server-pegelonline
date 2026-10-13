@@ -1,13 +1,14 @@
 """Access to the upstream Pegelonline APIs (dict API and official REST API)."""
 
 import logging
-from datetime import datetime
+import math
+from datetime import datetime, timedelta
 from urllib.parse import quote
 
 from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
-from pegelonline_mcp.http_client import get_json
+from pegelonline_mcp.http_client import get_json, get_png
 from pegelonline_mcp.models import Measurement
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,11 @@ HISTORY_MINUTES = 35 * 24 * 60
 # Interval assumed for a timeseries that reports none; most series are
 # spaced 15 minutes apart
 DEFAULT_INTERVAL_MINUTES = 15
+
+# Chart size in pixels. Claude counts an image as about width × height / 750
+# tokens, so a chart costs about 480 whatever its span.
+CHART_WIDTH = 900
+CHART_HEIGHT = 400
 
 
 async def search(params: dict | None = None) -> list[dict]:
@@ -94,29 +100,44 @@ async def fetch_measurements(
     return recent
 
 
-async def fetch_measurements_within(
-    uuid: str, parameter: str, minutes: int
+def _window_params(start: datetime | timedelta, end: datetime | None) -> dict[str, str]:
+    """Query parameters of a time window from ``start`` to ``end``, both included.
+
+    Like the API's own ``start``, ``start`` is a timestamp or a span back from
+    now, rounded up to whole minutes. Without ``end``, the window reaches up
+    to now.
+    """
+    if isinstance(start, timedelta):
+        params = {"start": f"PT{math.ceil(start / timedelta(minutes=1))}M"}
+    else:
+        params = {"start": start.isoformat()}
+    if end is not None:
+        params["end"] = end.isoformat()
+    return params
+
+
+async def fetch_measurements_since(
+    uuid: str, parameter: str, start: datetime | timedelta, end: datetime | None = None
 ) -> list[Measurement]:
-    """Measurements of a station parameter within the last ``minutes``.
+    """Measurements of a station parameter in a time window, see ``_window_params``.
 
     Oldest first, as the API returns them.
     """
     url = _measurements_url(uuid, parameter)
-    return await get_json(url, params={"start": f"PT{minutes}M"})
+    return await get_json(url, params=_window_params(start, end))
 
 
-async def fetch_measurements_between(
-    uuid: str, parameter: str, start: datetime, end: datetime | None = None
-) -> list[Measurement]:
-    """Measurements of a station parameter from ``start`` to ``end``, both included.
-
-    Without ``end``, the span reaches up to now. Oldest first, as the API
-    returns them.
-    """
-    params = {"start": start.isoformat()}
-    if end is not None:
-        params["end"] = end.isoformat()
-    return await get_json(_measurements_url(uuid, parameter), params=params)
+async def fetch_measurements_chart(
+    uuid: str, parameter: str, start: datetime | timedelta, end: datetime | None = None
+) -> bytes:
+    """PNG line chart of a station parameter in a time window, see ``_window_params``."""
+    url = f"{_timeseries_url(uuid, parameter)}/measurements.png"
+    params = {
+        **_window_params(start, end),
+        "width": str(CHART_WIDTH),
+        "height": str(CHART_HEIGHT),
+    }
+    return await get_png(url, params=params)
 
 
 async def fetch_waters() -> list[dict]:
