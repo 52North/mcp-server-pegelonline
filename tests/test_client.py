@@ -16,15 +16,6 @@ from conftest import (
 from pegelonline_mcp import client
 
 
-async def test_search_drops_none_params(respx_mock):
-    route = respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_rhein"))
-
-    stations = await client.search({"gewaesser": "Rhein", "land": None})
-
-    assert dict(route.calls.last.request.url.params) == {"gewaesser": "Rhein"}
-    assert len(stations) == len(load_fixture("search_rhein")["stations"])
-
-
 async def test_search_without_stations_key(respx_mock):
     respx_mock.get(SEARCH_URL).respond(json={})
 

@@ -6,7 +6,7 @@ district for some stations, and a stricter type would fail the whole call.
 Only fields computed here or echoing an argument are not.
 """
 
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 
 class ParameterInfo(TypedDict):
@@ -147,14 +147,11 @@ class SpanCounts(TypedDict, total=False):
     truncated: bool
 
 
-class RecentMeasurements(TypedDict):
+class RecentMeasurements(SpanCounts):
     """Recent measurements of one parameter, most recent first."""
 
     uuid: str
     parameter: str
     unit: str | None
     comment: str | None
-    total_matches: NotRequired[int]
-    returned: NotRequired[int]
-    truncated: NotRequired[bool]
     measurements: list[Measurement]

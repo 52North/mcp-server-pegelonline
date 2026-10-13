@@ -22,8 +22,7 @@ DEFAULT_INTERVAL_MINUTES = 15
 
 
 async def search(params: dict | None = None) -> list[dict]:
-    """Stations matching the dict API search filters; None values are ignored."""
-    params = {k: v for k, v in (params or {}).items() if v is not None}
+    """Stations matching the dict API search filters."""
     data = await get_json(f"{BASE_URL}/search", params=params)
     return data.get("stations", [])
 
