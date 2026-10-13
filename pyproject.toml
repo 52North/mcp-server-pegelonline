@@ -1,5 +1,5 @@
 [project]
-name = "mcp-server-pegelonline-dict-api"
+name = "mcp-server-pegelonline"
 version = "0.1.0"
 description = "An MCP server for gauge stations on German federal waterways: it finds stations via the Pegelonline Dict API and reads their metadata and measurements from the official Pegelonline REST API."
 readme = "README.md"

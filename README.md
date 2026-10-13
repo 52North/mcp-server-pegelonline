@@ -58,7 +58,7 @@ Without a clone, `uvx` runs the server straight from GitHub:
 uvx --from git+https://github.com/52North/mcp-server-pegelonline mcp-server-pegelonline
 ```
 In the client registrations below, this command can replace
-`uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline`.
+`uv --directory /path/to/mcp-server-pegelonline run mcp-server-pegelonline`.
 `uvx` resolves the dependencies afresh instead of using `uv.lock`, so it may run newer
 versions than the tested ones.
 
@@ -83,10 +83,10 @@ check that `packaging/requirements.txt` matches `uv.lock` on every push to
 To use this server with Gemini CLI, register it with the following command:
 
 ```bash
-gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline
+gemini mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline run mcp-server-pegelonline
 ```
 
-*Note: Replace `/path/to/mcp-server-pegelonline-dict-api` with the absolute path to this project's directory.*
+*Note: Replace `/path/to/mcp-server-pegelonline` with the absolute path to this project's directory.*
 
 ### Registering with Claude Code
 
@@ -95,7 +95,7 @@ server up automatically when started inside this directory. To register it manua
 (e.g., with user scope):
 
 ```bash
-claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline-dict-api run mcp-server-pegelonline
+claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonline run mcp-server-pegelonline
 ```
 
 Note: Claude Code is a CLI and does not render MCP Apps — the `show_stations_map`
@@ -114,7 +114,7 @@ Leaflet map inline. Add the server to `%APPDATA%\Claude\claude_desktop_config.js
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/mcp-server-pegelonline-dict-api",
+        "/path/to/mcp-server-pegelonline",
         "run", "mcp-server-pegelonline"
       ]
     }
@@ -133,7 +133,7 @@ using the Streamable HTTP transport:
 
 1. Run the server with HTTP transport:
    ```bash
-   uv run fastmcp run pegelonline_mcp/server.py --transport http --port 8000
+   uv run uvicorn pegelonline_mcp.asgi:app --port 8000 --log-config packaging/log-config.yaml
    ```
 2. Expose it via a public HTTPS URL (for testing e.g. `cloudflared tunnel --url http://localhost:8000`;
    for production deploy it to a host).
