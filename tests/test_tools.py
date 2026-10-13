@@ -4,7 +4,9 @@ The structured tool results are frozen as JSON snapshots so later refactoring
 steps can prove the responses stay identical.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -21,17 +23,66 @@ from conftest import (
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
-from pegelonline_mcp.tools_measurements import MAX_SPAN_VALUES
+from pegelonline_mcp.tools_measurements import (
+    MAX_RAW_SLOTS,
+    MAX_RESULT_CHARS,
+    MAX_SPAN_VALUES,
+)
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
 KOELN_W = {"uuid": KOELN_UUID, "parameter": "W"}
+
+BERLIN = ZoneInfo("Europe/Berlin")
+# A time window may start at most 35 days back, so windows follow the clock
+NOW = datetime.now(UTC).replace(microsecond=0)
+START = (NOW - timedelta(days=2)).astimezone(BERLIN)
+END = START + timedelta(hours=6)
 
 
 @pytest.fixture
 def timeseries_w(respx_mock):
     """Köln W metadata, which get_recent_measurements fetches before the values."""
     return respx_mock.get(TIMESERIES_URL).respond(json=load_fixture("timeseries_koeln_w"))
+
+
+@pytest.fixture
+def three_days_of_minutes(respx_mock):
+    """Köln W as a 1-minute series over three days: 433 rows of 10 minutes."""
+    respx_mock.get(TIMESERIES_URL).respond(
+        json=load_fixture("timeseries_koeln_w") | {"equidistance": 1}
+    )
+    respx_mock.get(MEASUREMENTS_URL).mock(
+        side_effect=fake_measurements_api(days=3, interval_minutes=1)
+    )
+
+
+def series(
+    first: datetime, values: list[float | None], interval_minutes: int = 15
+) -> list[dict[str, Any]]:
+    """Measurements every ``interval_minutes`` from ``first`` on, in German time.
+
+    ``first`` is in UTC, so the steps also cross a change of daylight saving
+    time evenly. A None value leaves a gap.
+    """
+    return [
+        {
+            "timestamp": (first + timedelta(minutes=i * interval_minutes))
+            .astimezone(BERLIN)
+            .isoformat(),
+            "value": value,
+        }
+        for i, value in enumerate(values)
+        if value is not None
+    ]
+
+
+def mock_history(respx_mock, measurements: list[dict[str, Any]], **timeseries: Any):
+    """Mock Köln W with ``measurements``; ``timeseries`` overrides its metadata."""
+    respx_mock.get(TIMESERIES_URL).respond(
+        json=load_fixture("timeseries_koeln_w") | timeseries
+    )
+    respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
 
 
 async def test_search_stations(client, respx_mock, snapshot_json):
@@ -291,6 +342,225 @@ async def test_get_recent_measurements_reports_unit_and_comment(client, respx_mo
     assert [m["value"] for m in data["measurements"]] == [577.0]
 
 
+async def test_get_measurement_history(client, respx_mock, timeseries_w, snapshot_json):
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=load_fixture("measurements_w"))
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    # The last 24 hours by default
+    assert dict(route.calls.last.request.url.params) == {"start": "PT1440M"}
+    assert result.structured_content == snapshot_json
+
+
+@pytest.mark.parametrize(
+    ("window", "params"),
+    [
+        ({"hours": 1.5}, {"start": "PT90M"}),
+        ({"start": START.isoformat()}, {"start": START.isoformat()}),
+        (
+            {"start": START.isoformat(), "end": END.isoformat()},
+            {"start": START.isoformat(), "end": END.isoformat()},
+        ),
+    ],
+    ids=["hours", "start", "start-end"],
+)
+async def test_get_measurement_history_requests_window(
+    client, respx_mock, timeseries_w, window, params
+):
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=[])
+
+    await client.call_tool("get_measurement_history", {**KOELN_W, **window})
+
+    # hours counts back from the API's now, a window is sent as given
+    assert dict(route.calls.last.request.url.params) == params
+
+
+@pytest.mark.parametrize(
+    ("window", "message"),
+    [
+        ({"hours": 24, "start": START.isoformat()}, "either hours or start"),
+        ({"end": END.isoformat()}, "end needs start"),
+        ({"start": END.isoformat(), "end": START.isoformat()}, "before end"),
+        ({"start": (NOW + timedelta(hours=1)).isoformat()}, "before end"),
+        ({"start": (NOW - timedelta(days=36)).isoformat()}, "a little over 31 days"),
+        (
+            {"start": START.isoformat(), "end": (NOW + timedelta(days=34)).isoformat()},
+            "at most 840 hours apart",
+        ),
+    ],
+    ids=[
+        "hours-and-start", "end-without-start", "end-before-start",
+        "start-in-future", "start-too-old", "window-too-long",
+    ],
+)
+async def test_get_measurement_history_rejects_window(client, respx_mock, window, message):
+    # Rejected before any upstream request, which respx would refuse unmocked
+    with pytest.raises(ToolError, match=message):
+        await client.call_tool("get_measurement_history", {**KOELN_W, **window})
+
+
+async def test_get_measurement_history_marks_gaps(client, respx_mock):
+    # 12:30 and the whole hour from 13:00 are missing
+    mock_history(respx_mock, series(
+        datetime(2026, 10, 6, 10, 0, tzinfo=UTC),
+        [50.0, 50.5, None, 51.0, None, None, None, None, 52.0, 52.0, 52.0, 52.0],
+    ))
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    data = result.structured_content
+    assert (data["resolution"], data["columns"]) == ("raw", ["+0", "+15", "+30", "+45"])
+    assert data["rows"] == {
+        "2026-10-06T12:00+02:00": [50, 50.5, None, 51],
+        "2026-10-06T14:00+02:00": [52, 52, 52, 52],
+    }
+    assert (data["summary"]["count"], data["summary"]["missing"]) == (7, 5)
+
+
+async def test_get_measurement_history_names_repeated_hour_by_offset(client, respx_mock):
+    # On 25 October 2026 the clocks go back from 03:00 CEST to 02:00 CET
+    mock_history(respx_mock, series(datetime(2026, 10, 24, 23, 0, tzinfo=UTC), [48.0] * 16))
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    data = result.structured_content
+    assert list(data["rows"]) == [
+        "2026-10-25T01:00+02:00",
+        "2026-10-25T02:00+02:00",
+        "2026-10-25T02:00+01:00",
+        "2026-10-25T03:00+01:00",
+    ]
+    assert data["summary"]["missing"] == 0
+
+
+async def test_get_measurement_history_minute_series_in_rows_of_ten(client, respx_mock):
+    # 12:03 to 12:27, each value the minute it was measured
+    mock_history(
+        respx_mock,
+        series(
+            datetime(2026, 10, 6, 10, 3, tzinfo=UTC),
+            [float(minute) for minute in range(3, 28)],
+            interval_minutes=1,
+        ),
+        equidistance=1,
+    )
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    data = result.structured_content
+    assert data["columns"] == [f"+{minute}" for minute in range(10)]
+    # The slot is the last digit of the minute
+    assert data["rows"] == {
+        "2026-10-06T12:00+02:00": [None, None, None, 3, 4, 5, 6, 7, 8, 9],
+        "2026-10-06T12:10+02:00": list(range(10, 20)),
+        "2026-10-06T12:20+02:00": [20, 21, 22, 23, 24, 25, 26, 27, None, None],
+    }
+
+
+async def test_get_measurement_history_auto_summarizes_per_hour(
+    client, three_days_of_minutes
+):
+    result = await client.call_tool("get_measurement_history", {**KOELN_W, "hours": 72})
+
+    data = result.structured_content
+    assert (data["resolution"], data["truncated"]) == ("hour", False)
+    assert data["columns"] == ["min", "mean", "max"]
+    assert len(data["rows"]) == 73
+    assert data["rows"]["2026-10-08T12:00+02:00"] == [48, 48, 48]
+    assert data["summary"]["count"] == 3 * 24 * 60
+
+
+async def test_get_measurement_history_raw_keeps_newest_rows(client, three_days_of_minutes):
+    result = await client.call_tool(
+        "get_measurement_history", {**KOELN_W, "hours": 72, "resolution": "raw"}
+    )
+
+    data = result.structured_content
+    assert (data["resolution"], data["truncated"]) == ("raw", True)
+    rows = list(data["rows"])
+    assert len(rows) == MAX_RAW_SLOTS // 10
+    assert (rows[0], rows[-1]) == ("2026-10-06T04:10+02:00", "2026-10-08T12:00+02:00")
+    # The summary still covers every value
+    assert data["summary"]["count"] == 3 * 24 * 60
+
+
+async def test_get_measurement_history_by_day(client, respx_mock):
+    # Hourly from 22:00 to 02:00 the next day
+    mock_history(
+        respx_mock,
+        series(
+            datetime(2026, 10, 6, 20, 0, tzinfo=UTC),
+            [1.0, 2.0, 1.0, 1.0, 2.0],
+            interval_minutes=60,
+        ),
+        equidistance=60,
+    )
+
+    result = await client.call_tool(
+        "get_measurement_history", {**KOELN_W, "resolution": "day"}
+    )
+
+    data = result.structured_content
+    assert (data["resolution"], data["columns"]) == ("day", ["min", "mean", "max"])
+    assert data["rows"] == {"2026-10-06": [1, 1.5, 2], "2026-10-07": [1, 1.33, 2]}
+
+
+async def test_get_measurement_history_summary(client, respx_mock):
+    mock_history(respx_mock, series(
+        datetime(2026, 10, 6, 10, 0, tzinfo=UTC), [3.0, 1.0, 5.0, 1.0, 5.0, 2.0]
+    ))
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    # The earliest of equal extremes counts; mean is rounded to two decimals
+    assert result.structured_content["summary"] == {
+        "count": 6,
+        "missing": 0,
+        "first": {"timestamp": "2026-10-06T12:00:00+02:00", "value": 3},
+        "last": {"timestamp": "2026-10-06T13:15:00+02:00", "value": 2},
+        "min": {"timestamp": "2026-10-06T12:15:00+02:00", "value": 1},
+        "max": {"timestamp": "2026-10-06T12:30:00+02:00", "value": 5},
+        "mean": 2.83,
+    }
+
+
+async def test_get_measurement_history_without_values(client, respx_mock):
+    # E.g. a window before the kept history
+    mock_history(respx_mock, [])
+
+    result = await client.call_tool("get_measurement_history", KOELN_W)
+
+    data = result.structured_content
+    assert data["summary"] == {
+        "count": 0, "missing": None, "first": None, "last": None,
+        "min": None, "max": None, "mean": None,
+    }
+    assert data["rows"] == {}
+
+
+@pytest.mark.parametrize(
+    ("first", "timeseries"),
+    [
+        (datetime(2026, 10, 6, 10, 0, tzinfo=UTC), {"equidistance": None}),
+        (datetime(2026, 10, 6, 10, 7, tzinfo=UTC), {}),
+    ],
+    ids=["unknown-interval", "off-grid"],
+)
+async def test_get_measurement_history_without_grid_summarizes_per_hour(
+    client, respx_mock, first, timeseries
+):
+    mock_history(respx_mock, series(first, [48.0] * 3), **timeseries)
+
+    result = await client.call_tool(
+        "get_measurement_history", {**KOELN_W, "resolution": "raw"}
+    )
+
+    data = result.structured_content
+    assert (data["resolution"], data["truncated"]) == ("hour", False)
+    assert data["rows"] == {"2026-10-06T12:00+02:00": [48, 48, 48]}
+    assert data["summary"]["missing"] is None
+
+
 async def test_upstream_404_raises_tool_error(client, respx_mock):
     respx_mock.get(STATION_URL).respond(404)
 
@@ -339,6 +609,11 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         ("get_recent_measurements", {**KOELN_W, "count": 1001}, "count"),
         ("get_recent_measurements", {**KOELN_W, "hours": 0}, "hours"),
         ("get_recent_measurements", {**KOELN_W, "hours": 841}, "hours"),
+        ("get_measurement_history", {**KOELN_W, "hours": 0}, "hours"),
+        ("get_measurement_history", {**KOELN_W, "hours": 841}, "hours"),
+        # Without an offset, the time is ambiguous
+        ("get_measurement_history", {**KOELN_W, "start": "2026-09-20T00:00"}, "start"),
+        ("get_measurement_history", {**KOELN_W, "resolution": "minute"}, "resolution"),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
@@ -368,13 +643,31 @@ async def test_constraints_in_tool_schema(client, tool, argument, constraint):
     assert constraint.items() <= schema.items()
 
 
-async def test_hours_constraints_in_tool_schema(client):
+@pytest.mark.parametrize("tool", ["get_recent_measurements", "get_measurement_history"])
+async def test_hours_constraints_in_tool_schema(client, tool):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools["get_recent_measurements"].inputSchema["properties"]["hours"]
+    schema = tools[tool].inputSchema["properties"]["hours"]
 
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
     assert {"exclusiveMinimum": 0, "maximum": 840}.items() <= number.items()
+
+
+async def test_history_window_in_tool_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+    properties = tools["get_measurement_history"].inputSchema["properties"]
+
+    for argument in ("start", "end"):
+        assert {"type": "string", "format": "date-time"} in properties[argument]["anyOf"]
+    assert properties["resolution"]["enum"] == ["auto", "raw", "hour", "day"]
+
+
+async def test_history_allows_large_results(client):
+    tools = {t.name: t for t in await client.list_tools()}
+
+    # Claude Code reads the allowance from the tool's _meta in tools/list
+    meta = tools["get_measurement_history"].meta
+    assert meta["anthropic/maxResultSizeChars"] == MAX_RESULT_CHARS
 
 
 @pytest.mark.parametrize(
@@ -401,6 +694,13 @@ async def test_hours_constraints_in_tool_schema(client):
                 "total_matches", "returned", "truncated", "measurements",
             },
         ),
+        (
+            "get_measurement_history",
+            {
+                "uuid", "parameter", "unit", "comment", "interval_minutes",
+                "summary", "resolution", "truncated", "columns", "rows",
+            },
+        ),
     ],
 )
 async def test_output_schema_describes_response(client, tool, properties):
@@ -420,6 +720,7 @@ async def test_tools_are_annotated_read_only(client):
         "show_stations_map",
         "get_latest_measurements",
         "get_recent_measurements",
+        "get_measurement_history",
     }
     for tool in tools:
         assert tool.annotations.readOnlyHint is True, tool.name

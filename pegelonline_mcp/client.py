@@ -1,6 +1,7 @@
 """Access to the upstream Pegelonline APIs (dict API and official REST API)."""
 
 import logging
+from datetime import datetime
 from urllib.parse import quote
 
 from fastmcp.exceptions import ToolError
@@ -98,11 +99,24 @@ async def fetch_measurements_within(
 ) -> list[Measurement]:
     """Measurements of a station parameter within the last ``minutes``.
 
-    Most recent first, like ``fetch_measurements``.
+    Oldest first, as the API returns them.
     """
     url = _measurements_url(uuid, parameter)
-    data = await get_json(url, params={"start": f"PT{minutes}M"})
-    return data[::-1]
+    return await get_json(url, params={"start": f"PT{minutes}M"})
+
+
+async def fetch_measurements_between(
+    uuid: str, parameter: str, start: datetime, end: datetime | None = None
+) -> list[Measurement]:
+    """Measurements of a station parameter from ``start`` to ``end``, both included.
+
+    Without ``end``, the span reaches up to now. Oldest first, as the API
+    returns them.
+    """
+    params = {"start": start.isoformat()}
+    if end is not None:
+        params["end"] = end.isoformat()
+    return await get_json(_measurements_url(uuid, parameter), params=params)
 
 
 async def fetch_waters() -> list[dict]:

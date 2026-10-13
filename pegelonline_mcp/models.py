@@ -6,7 +6,7 @@ district for some stations, and a stricter type would fail the whole call.
 Only fields computed here or echoing an argument are not.
 """
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 
 class ParameterInfo(TypedDict):
@@ -155,3 +155,36 @@ class RecentMeasurements(SpanCounts):
     unit: str | None
     comment: str | None
     measurements: list[Measurement]
+
+
+class HistorySummary(TypedDict):
+    """Statistics of all values in a time span; without values, all but count are None."""
+
+    count: int
+    # None if the interval is unknown or values lie off its grid
+    missing: int | None
+    first: Measurement | None
+    last: Measurement | None
+    min: Measurement | None
+    max: Measurement | None
+    mean: float | None
+
+
+class HistoryRows(TypedDict):
+    """Values of a time span in rows, oldest first."""
+
+    resolution: Literal["raw", "hour", "day"]
+    truncated: bool
+    columns: list[str]
+    rows: dict[str, list[float | None]]
+
+
+class MeasurementHistory(HistoryRows):
+    """Measurements of one parameter over a time span."""
+
+    uuid: str
+    parameter: str
+    unit: str | None
+    comment: str | None
+    interval_minutes: int | None
+    summary: HistorySummary

@@ -1,5 +1,7 @@
 """Unit tests for the upstream API layer against mocked HTTP."""
 
+from datetime import datetime, timedelta, timezone
+
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
@@ -108,7 +110,26 @@ async def test_fetch_measurements_within(respx_mock):
     recent = await client.fetch_measurements_within(KOELN_UUID, "W", 1440)
 
     assert route.calls.last.request.url.params["start"] == "PT1440M"
-    assert recent == measurements[::-1]
+    assert recent == measurements
+
+
+async def test_fetch_measurements_between(respx_mock):
+    measurements = load_fixture("measurements_w")
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
+    start = datetime(2026, 10, 6, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+
+    recent = await client.fetch_measurements_between(
+        KOELN_UUID, "W", start, start + timedelta(hours=2)
+    )
+
+    request = route.calls.last.request
+    assert dict(request.url.params) == {
+        "start": "2026-10-06T12:00:00+02:00",
+        "end": "2026-10-06T14:00:00+02:00",
+    }
+    # An unescaped "+" would reach the API as a space
+    assert b"%2B02%3A00" in request.url.query
+    assert recent == measurements
 
 
 async def test_fetch_measurements_falls_back_to_full_history(respx_mock):

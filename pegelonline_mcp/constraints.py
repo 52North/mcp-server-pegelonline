@@ -4,7 +4,7 @@ FastMCP validates them before the tool runs and publishes them in the tool
 input schema.
 """
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -19,3 +19,6 @@ Latitude = Annotated[float, Field(ge=-90, le=90)]
 Longitude = Annotated[float, Field(ge=-180, le=180)]
 # A time span reaching back further than the kept history adds nothing
 Hours = Annotated[float, Field(gt=0, le=HISTORY_MINUTES // 60)]
+# Rows of a measurement history: raw values, or min/mean/max per hour or
+# day; auto takes raw values while they fit
+Resolution = Literal["auto", "raw", "hour", "day"]
