@@ -12,7 +12,8 @@ Pegelonline REST API.
 - **Station details**: `get_station_info` returns metadata and the observed
   parameters.
 - **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
-  the latest values or a time span, with unit and timeseries comment.
+  the latest values, `get_measurement_history` any span of the last 31 days as
+  compact rows or hourly and daily summaries; all with unit and timeseries comment.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
   (MCP App) in Claude Desktop and claude.ai.
 - **Resources**: water bodies, federal states and the stations per state.
@@ -196,15 +197,55 @@ water, and `state_nsw_hsw` relative to the highest navigable water level.
 
 ### `get_recent_measurements`
 
-Returns the most recent `count` measurements (default: 2) for one parameter
-(`W`, `Q`, ...) of a station by `uuid`, most recent first. Alternatively,
-`hours` returns all measurements of the last N hours (e.g., 24); prefer it for
-time spans, as the measurement interval differs between timeseries (1, 15 or
-60 minutes). At most the 1440 most recent values come back (a day of 1-minute
-data); `total_matches` and `truncated` show whether the span held more.
-The response also carries the timeseries' `unit`, which differs between
-stations (e.g., W in `cm` or `m+NN`, conductivity in `µS/cm` or `mS/cm`), and
-its `comment`, if any.
+Returns the most recent `count` measurements (default: 2, at most 100) for one
+parameter (`W`, `Q`, ...) of a station by `uuid`, most recent first. Time spans
+are left to `get_measurement_history`, as the measurement interval differs
+between timeseries (1, 5, 10, 15 or 60 minutes). The response also carries the
+timeseries' `unit`, which differs between stations (e.g., W in `cm` or `m+NN`,
+conductivity in `µS/cm` or `mS/cm`), and its `comment`, if any.
+
+### `get_measurement_history`
+
+Returns the measurements of one parameter of a station over a time span, oldest
+first: the last `hours` (default: 24) or a window from `start` to `end` (ISO 8601
+with UTC offset, both included; `end` defaults to now). A window spans at most
+840 hours and starts at most 35 days back; the official API keeps a little over
+31 days.
+
+The values come in rows. Each key is the start of an hour in German local time
+(CET/CEST) with its UTC offset, and `columns` gives each slot's offset from it in
+minutes; 1-minute series use rows of 10 minutes. `null` marks a missing value,
+rows without any value are left out, and the hour repeated when daylight saving
+time ends appears twice, once with `+02:00` and once with `+01:00`:
+
+```json
+{
+  "columns": ["+0", "+15", "+30", "+45"],
+  "rows": {
+    "2026-10-06T12:00+02:00": [48, 48, null, 49],
+    "2026-10-06T13:00+02:00": [49, 49, 50, 50]
+  }
+}
+```
+
+`resolution` selects the rows, and the response reports which ones it holds:
+- `auto` (default): raw values while the rows hold at most 3360 slots (35 days of
+  a 15-minute series), otherwise as `hour`. The whole history of 15- and
+  60-minute series always comes raw.
+- `raw`: raw values; beyond 3360 slots only the newest rows, with `truncated`.
+- `hour`, `day`: `min`, `mean` and `max` per hour or calendar day.
+
+Raw rows need the values on the series' grid. Without a known interval, or with
+values off the grid, `auto` and `raw` summarize per hour.
+
+`summary` covers all values of the span in any case: `count`, `missing` grid
+slots between the first and last value, `first`, `last`, `min` and `max` with
+their timestamps, and `mean`. The response also carries the timeseries' `unit`,
+`comment` and `interval_minutes`.
+
+The largest responses reach about 48 000 characters. The tool sets
+`_meta["anthropic/maxResultSizeChars"]` to 60 000, so Claude Code keeps them in
+context instead of moving them to a file.
 
 ### `find_nearest_stations`
 

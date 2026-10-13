@@ -23,12 +23,13 @@ Workflow:
 - The location tools expect WGS84 coordinates, not place names: resolve the
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info,
-  get_latest_measurements and get_recent_measurements.
-- Measurement intervals differ per timeseries (equidistance_minutes in
-  get_station_info: mostly 15 minutes, often 1 or 60). For a time span, call
-  get_recent_measurements with hours (e.g., hours=24) instead of estimating a
-  count. A span returns at most the 1440 most recent values (24 hours of a
-  1-minute series, 15 days of a 15-minute one); truncated=true marks a cut.
+  get_latest_measurements, get_recent_measurements and get_measurement_history.
+- For a time span (e.g., the last 24 hours, a week or a past day), call
+  get_measurement_history instead of estimating a count for
+  get_recent_measurements: measurement intervals differ per timeseries (1, 5,
+  10, 15 or 60 minutes; equidistance_minutes in get_station_info). The
+  official API keeps a little over 31 days. Long spans of short-interval
+  series come as hourly min/mean/max; resolution in the response says so.
 
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),
@@ -36,9 +37,9 @@ Interpreting values:
   Some stations, mostly on canals, report W directly in m+NN; the unit
   returned with every measurement tool's values tells which.
 - Discharge Q may be missing, stale or unreliable at low water; compare
-  timestamps. get_latest_measurements, get_recent_measurements and
-  get_station_info return a comment per timeseries that explains such cases
-  and reports disturbances or stations out of service.
+  timestamps. The measurement tools and get_station_info return a comment per
+  timeseries that explains such cases and reports disturbances or stations
+  out of service.
 - Measurements are raw data (Rohdaten) and unverified; small jumps of about
   1 cm are usually measurement noise.
 """
