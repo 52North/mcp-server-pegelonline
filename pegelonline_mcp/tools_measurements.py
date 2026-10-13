@@ -13,7 +13,7 @@ from pydantic import AwareDatetime
 from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.client import HISTORY_MINUTES
-from pegelonline_mcp.constraints import Count, Hours, Resolution
+from pegelonline_mcp.constraints import Hours, RecentCount, Resolution
 from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, water_name
 from pegelonline_mcp.models import (
     HistoryRows,
@@ -23,15 +23,9 @@ from pegelonline_mcp.models import (
     Measurement,
     MeasurementHistory,
     RecentMeasurements,
-    SpanCounts,
 )
 
 logger = logging.getLogger(__name__)
-
-# Most values a time span returns: a full day of a 1-minute series, so
-# hours=24 always fits, while 35 days of such a series (about 45 000 values)
-# no longer flood the LLM context.
-MAX_SPAN_VALUES = 24 * 60
 
 # Time span of get_measurement_history without hours or start
 DEFAULT_HOURS = 24
@@ -103,10 +97,13 @@ async def get_latest_measurements(uuid: str) -> LatestMeasurements:
 
 
 async def get_recent_measurements(
-    uuid: str, parameter: str, count: Count = 2, hours: Hours | None = None
+    uuid: str, parameter: str, count: RecentCount = 2
 ) -> RecentMeasurements:
     """
-    Fetch the most recent measurements for a specific parameter of a station.
+    Fetch the most recent measurements for a specific parameter of a station,
+    newest first. For a time span such as the last 24 hours, use
+    get_measurement_history instead: the measurement interval differs per
+    timeseries, so a count covers no fixed span.
     Values are given in unit, which differs between timeseries: water levels
     (W) are mostly in cm, but some stations, mostly on canals, report m+NN.
     comment explains disturbances or stale values, if there are any.
@@ -114,35 +111,17 @@ async def get_recent_measurements(
     Args:
         uuid: The unique identifier (UUID) of the station.
         parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
-        count: Number of recent measurements to fetch (default: 2). Ignored if
-            hours is given.
-        hours: Fetch all measurements of the last N hours instead (e.g., 24).
-            Prefer this for time spans: the measurement interval differs per
-            timeseries (1, 15 or 60 minutes). At most the 1440 most recent
-            values are returned; total_matches and truncated report a cut.
+        count: Number of recent measurements to fetch (default: 2, at most 100).
     """
     logger.info(
-        "get_recent_measurements: uuid=%s parameter=%s count=%d hours=%s",
-        uuid, parameter, count, hours,
+        "get_recent_measurements: uuid=%s parameter=%s count=%d",
+        uuid, parameter, count,
     )
     # Fetched first, so an unknown parameter fails with a single 404
     timeseries = await client.fetch_timeseries(uuid, parameter)
-    span: SpanCounts = {}
-    if hours is None:
-        recent = await client.fetch_measurements(
-            uuid, parameter, count, timeseries.get("equidistance")
-        )
-    else:
-        in_span = await client.fetch_measurements_within(
-            uuid, parameter, math.ceil(hours * 60)
-        )
-        # Most recent first, so the cut drops the oldest values
-        recent = in_span[::-1][:MAX_SPAN_VALUES]
-        span = {
-            "total_matches": len(in_span),
-            "returned": len(recent),
-            "truncated": len(in_span) > len(recent),
-        }
+    recent = await client.fetch_measurements(
+        uuid, parameter, count, timeseries.get("equidistance")
+    )
     logger.info(
         "get_recent_measurements: uuid=%s parameter=%s -> %d measurements",
         uuid, parameter, len(recent),
@@ -153,7 +132,6 @@ async def get_recent_measurements(
         "parameter": parameter,
         "unit": timeseries.get("unit"),
         "comment": timeseries_comment(timeseries),
-        **span,
         "measurements": recent
     }
 

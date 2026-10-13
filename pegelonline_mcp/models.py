@@ -139,15 +139,7 @@ class Measurement(TypedDict):
     value: float | None
 
 
-class SpanCounts(TypedDict, total=False):
-    """How many values a time span held and returned."""
-
-    total_matches: int
-    returned: int
-    truncated: bool
-
-
-class RecentMeasurements(SpanCounts):
+class RecentMeasurements(TypedDict):
     """Recent measurements of one parameter, most recent first."""
 
     uuid: str

@@ -10,9 +10,10 @@ from pydantic import Field
 
 from pegelonline_mcp.client import HISTORY_MINUTES
 
-# Shared by station limits and measurement counts: more than the ~730
-# stations and plenty for "the last N values"; time spans use Hours.
+# Station limits: more than the ~730 stations
 Count = Annotated[int, Field(ge=1, le=1000)]
+# "The last N values" of a timeseries; time spans go to get_measurement_history
+RecentCount = Annotated[int, Field(ge=1, le=100)]
 # 1000 km around any point in Germany covers the whole country
 RadiusKm = Annotated[float, Field(gt=0, le=1000)]
 Latitude = Annotated[float, Field(ge=-90, le=90)]

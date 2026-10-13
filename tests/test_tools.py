@@ -4,7 +4,7 @@ The structured tool results are frozen as JSON snapshots so later refactoring
 steps can prove the responses stay identical.
 """
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -23,11 +23,7 @@ from conftest import (
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
-from pegelonline_mcp.tools_measurements import (
-    MAX_RAW_SLOTS,
-    MAX_RESULT_CHARS,
-    MAX_SPAN_VALUES,
-)
+from pegelonline_mcp.tools_measurements import MAX_RAW_SLOTS, MAX_RESULT_CHARS
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
@@ -270,58 +266,20 @@ async def test_get_recent_measurements_falls_back_to_full_history(
 
 
 async def test_get_recent_measurements_window_follows_interval(client, respx_mock):
-    # A 1-minute series: the window covers 2000 minutes, not 1000 × 30
+    # A 1-minute series: the window covers 200 minutes, not 100 × 30
     timeseries = load_fixture("timeseries_koeln_w") | {"equidistance": 1}
     respx_mock.get(TIMESERIES_URL).respond(json=timeseries)
     route = respx_mock.get(MEASUREMENTS_URL).mock(
         side_effect=fake_measurements_api(days=3, interval_minutes=1)
     )
 
-    result = await client.call_tool("get_recent_measurements", {**KOELN_W, "count": 1000})
+    result = await client.call_tool("get_recent_measurements", {**KOELN_W, "count": 100})
 
     assert route.call_count == 1
-    assert route.calls.last.request.url.params["start"] == "PT2000M"
+    assert route.calls.last.request.url.params["start"] == "PT200M"
     measurements = result.structured_content["measurements"]
-    assert len(measurements) == 1000
+    assert len(measurements) == 100
     assert measurements[0]["timestamp"] > measurements[-1]["timestamp"]
-
-
-async def test_get_recent_measurements_by_hours(client, respx_mock, timeseries_w):
-    measurements = load_fixture("measurements_w")
-    route = respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
-
-    result = await client.call_tool(
-        "get_recent_measurements",
-        {"uuid": KOELN_UUID, "parameter": "W", "count": 2, "hours": 24},
-    )
-
-    # One request for the time span; count does not apply
-    assert route.call_count == 1
-    assert route.calls.last.request.url.params["start"] == "PT1440M"
-    assert result.structured_content["measurements"] == measurements[::-1]
-    assert result.structured_content["truncated"] is False
-
-
-async def test_get_recent_measurements_by_hours_keeps_newest_values(
-    client, respx_mock, timeseries_w
-):
-    # Two days of a 1-minute series hold more values than one response carries
-    start = datetime(2026, 10, 6, 12, 0, tzinfo=timezone(timedelta(hours=2)))
-    measurements = [
-        {"timestamp": (start + timedelta(minutes=i)).isoformat(), "value": 48.0}
-        for i in range(2 * 24 * 60)
-    ]
-    respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
-
-    result = await client.call_tool("get_recent_measurements", {**KOELN_W, "hours": 48})
-
-    data = result.structured_content
-    assert (data["total_matches"], data["returned"], data["truncated"]) == (
-        2 * 24 * 60, MAX_SPAN_VALUES, True
-    )
-    # Most recent first, so the cut drops the oldest values
-    assert data["measurements"][0] == measurements[-1]
-    assert data["measurements"][-1] == measurements[-MAX_SPAN_VALUES]
 
 
 async def test_get_recent_measurements_reports_unit_and_comment(client, respx_mock):
@@ -606,9 +564,9 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         ("show_stations_map", {**KOELN, "radius_km": 0}, "radius_km"),
         ("show_stations_map", {**KOELN, "latitude": -91}, "latitude"),
         ("get_recent_measurements", {**KOELN_W, "count": 0}, "count"),
-        ("get_recent_measurements", {**KOELN_W, "count": 1001}, "count"),
-        ("get_recent_measurements", {**KOELN_W, "hours": 0}, "hours"),
-        ("get_recent_measurements", {**KOELN_W, "hours": 841}, "hours"),
+        ("get_recent_measurements", {**KOELN_W, "count": 101}, "count"),
+        # Time spans moved to get_measurement_history; hours is not ignored
+        ("get_recent_measurements", {**KOELN_W, "hours": 24}, "hours"),
         ("get_measurement_history", {**KOELN_W, "hours": 0}, "hours"),
         ("get_measurement_history", {**KOELN_W, "hours": 841}, "hours"),
         # Without an offset, the time is ambiguous
@@ -633,7 +591,7 @@ async def test_invalid_arguments_are_rejected(client, respx_mock, tool, argument
         ("show_stations_map", "radius_km", {"exclusiveMinimum": 0, "maximum": 1000}),
         ("show_stations_map", "latitude", {"minimum": -90, "maximum": 90}),
         ("show_stations_map", "longitude", {"minimum": -180, "maximum": 180}),
-        ("get_recent_measurements", "count", {"minimum": 1, "maximum": 1000}),
+        ("get_recent_measurements", "count", {"minimum": 1, "maximum": 100}),
     ],
 )
 async def test_constraints_in_tool_schema(client, tool, argument, constraint):
@@ -643,10 +601,9 @@ async def test_constraints_in_tool_schema(client, tool, argument, constraint):
     assert constraint.items() <= schema.items()
 
 
-@pytest.mark.parametrize("tool", ["get_recent_measurements", "get_measurement_history"])
-async def test_hours_constraints_in_tool_schema(client, tool):
+async def test_hours_constraints_in_tool_schema(client):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools[tool].inputSchema["properties"]["hours"]
+    schema = tools["get_measurement_history"].inputSchema["properties"]["hours"]
 
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
@@ -689,10 +646,7 @@ async def test_history_allows_large_results(client):
         ("get_latest_measurements", {"station", "water", "measurements"}),
         (
             "get_recent_measurements",
-            {
-                "uuid", "parameter", "unit", "comment",
-                "total_matches", "returned", "truncated", "measurements",
-            },
+            {"uuid", "parameter", "unit", "comment", "measurements"},
         ),
         (
             "get_measurement_history",
