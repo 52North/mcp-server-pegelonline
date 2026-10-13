@@ -1,8 +1,5 @@
 """Unit tests for the upstream API layer against mocked HTTP."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
-
 import httpx
 import pytest
 from fastmcp.exceptions import ToolError
@@ -13,31 +10,10 @@ from conftest import (
     SEARCH_URL,
     STATION_URL,
     TIMESERIES_URL,
+    fake_measurements_api,
     load_fixture,
 )
 from pegelonline_mcp import client
-
-
-def fake_measurements_api(days: int, interval_minutes: int):
-    """Handler mimicking the official API for a series over the last ``days``.
-
-    Like the live API, it honours ``start=PT<n>M`` and returns only the last
-    10 days without ``start``.
-    """
-    now = datetime(2026, 10, 8, 12, 0, tzinfo=timezone(timedelta(hours=2)))
-    series: list[dict[str, Any]] = [
-        {"timestamp": (now - timedelta(minutes=age)).isoformat(), "value": 48.0}
-        for age in range(days * 24 * 60 - interval_minutes, -1, -interval_minutes)
-    ]
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        start = request.url.params.get("start", f"PT{10 * 24 * 60}M")
-        minutes = int(start.removeprefix("PT").removesuffix("M"))
-        since = now - timedelta(minutes=minutes)
-        kept = [m for m in series if datetime.fromisoformat(m["timestamp"]) >= since]
-        return httpx.Response(200, json=kept)
-
-    return handler
 
 
 async def test_search_drops_none_params(respx_mock):
@@ -161,8 +137,9 @@ async def test_fetch_measurements_falls_back_to_full_history(respx_mock):
 
 
 async def test_fetch_measurements_fallback_reaches_full_history(respx_mock):
-    # An hourly series over 31 days: the window for 1000 values holds about
-    # 500, and the API's 10-day default would hold even fewer.
+    # An hourly series whose interval is unknown, so the window assumes 15
+    # minutes: for 1000 values it holds about 500, and the API's 10-day
+    # default would hold even fewer.
     route = respx_mock.get(MEASUREMENTS_URL).mock(
         side_effect=fake_measurements_api(days=31, interval_minutes=60)
     )
@@ -184,3 +161,31 @@ async def test_fetch_measurements_window_capped_at_full_history(respx_mock):
     assert route.call_count == 1
     assert route.calls[0].request.url.params["start"] == f"PT{client.HISTORY_MINUTES}M"
     assert len(recent) == 31 * 24
+
+
+@pytest.mark.parametrize(
+    ("series_interval", "interval_minutes", "window", "values"),
+    [
+        # 1-minute series: 2000 instead of 30 000 minutes
+        (1, 1, "PT2000M", 1000),
+        (15, 15, "PT30000M", 1000),
+        # Hourly series: the full history at once instead of a second request
+        (60, 60, f"PT{client.HISTORY_MINUTES}M", 31 * 24),
+        # Unknown interval: 15 minutes are assumed
+        (15, None, "PT30000M", 1000),
+        (15, 0, "PT30000M", 1000),
+    ],
+)
+async def test_fetch_measurements_window_follows_interval(
+    respx_mock, series_interval, interval_minutes, window, values
+):
+    route = respx_mock.get(MEASUREMENTS_URL).mock(
+        side_effect=fake_measurements_api(days=31, interval_minutes=series_interval)
+    )
+
+    recent = await client.fetch_measurements(KOELN_UUID, "W", 1000, interval_minutes)
+
+    assert route.call_count == 1
+    assert route.calls[0].request.url.params["start"] == window
+    assert len(recent) == values
+    assert recent[0]["timestamp"] > recent[-1]["timestamp"]

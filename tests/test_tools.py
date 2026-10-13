@@ -16,6 +16,7 @@ from conftest import (
     SEARCH_URL,
     STATION_URL,
     TIMESERIES_URL,
+    fake_measurements_api,
     load_fixture,
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
@@ -215,6 +216,23 @@ async def test_get_recent_measurements_falls_back_to_full_history(
     assert route.calls[1].request.url.params["start"] == f"PT{HISTORY_MINUTES}M"
     assert len(result.structured_content["measurements"]) == 5
     assert result.structured_content == snapshot_json
+
+
+async def test_get_recent_measurements_window_follows_interval(client, respx_mock):
+    # A 1-minute series: the window covers 2000 minutes, not 1000 × 30
+    timeseries = load_fixture("timeseries_koeln_w") | {"equidistance": 1}
+    respx_mock.get(TIMESERIES_URL).respond(json=timeseries)
+    route = respx_mock.get(MEASUREMENTS_URL).mock(
+        side_effect=fake_measurements_api(days=3, interval_minutes=1)
+    )
+
+    result = await client.call_tool("get_recent_measurements", {**KOELN_W, "count": 1000})
+
+    assert route.call_count == 1
+    assert route.calls.last.request.url.params["start"] == "PT2000M"
+    measurements = result.structured_content["measurements"]
+    assert len(measurements) == 1000
+    assert measurements[0]["timestamp"] > measurements[-1]["timestamp"]
 
 
 async def test_get_recent_measurements_by_hours(client, respx_mock, timeseries_w):

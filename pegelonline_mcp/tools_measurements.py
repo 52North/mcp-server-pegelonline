@@ -100,7 +100,9 @@ async def get_recent_measurements(
     timeseries = await client.fetch_timeseries(uuid, parameter)
     span: SpanCounts = {}
     if hours is None:
-        recent = await client.fetch_measurements(uuid, parameter, count)
+        recent = await client.fetch_measurements(
+            uuid, parameter, count, timeseries.get("equidistance")
+        )
     else:
         in_span = await client.fetch_measurements_within(
             uuid, parameter, math.ceil(hours * 60)

@@ -16,6 +16,10 @@ logger = logging.getLogger("pegelonline-dict")
 # back to the oldest kept value.
 HISTORY_MINUTES = 35 * 24 * 60
 
+# Interval assumed for a timeseries that reports none; most series are
+# spaced 15 minutes apart
+DEFAULT_INTERVAL_MINUTES = 15
+
 
 async def search(params: dict | None = None) -> list[dict]:
     """Stations matching the dict API search filters; None values are ignored."""
@@ -59,15 +63,23 @@ async def fetch_timeseries(uuid: str, parameter: str) -> dict:
     return await get_json(f"{_timeseries_url(uuid, parameter)}.json")
 
 
-async def fetch_measurements(uuid: str, parameter: str, count: int) -> list[Measurement]:
-    """The last ``count`` measurements of a station parameter, most recent first."""
+async def fetch_measurements(
+    uuid: str, parameter: str, count: int, interval_minutes: int | None = None
+) -> list[Measurement]:
+    """The last ``count`` measurements of a station parameter, most recent first.
+
+    ``interval_minutes`` is the measurement interval of the timeseries
+    (``equidistance``); without it, 15 minutes are assumed.
+    """
     url = _measurements_url(uuid, parameter)
 
-    # Measurements are typically spaced 15 minutes apart. Request a window
-    # twice that size server-side instead of downloading the full history,
-    # and fall back to the full history if the window has gaps. A window
-    # that already spans the full history needs no fallback.
-    window_minutes = min(max(count * 30, 60), HISTORY_MINUTES)
+    # Request a window twice the span ``count`` values cover at the series'
+    # interval server-side instead of downloading the full history, and
+    # fall back to the full history if the window has gaps. A window that
+    # already spans the full history needs no fallback.
+    if not isinstance(interval_minutes, int) or interval_minutes < 1:
+        interval_minutes = DEFAULT_INTERVAL_MINUTES
+    window_minutes = min(max(count * interval_minutes * 2, 60), HISTORY_MINUTES)
     data = await get_json(url, params={"start": f"PT{window_minutes}M"})
     if len(data) < count and window_minutes < HISTORY_MINUTES:
         logger.debug(
