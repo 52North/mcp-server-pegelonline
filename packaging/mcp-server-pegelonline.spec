@@ -21,7 +21,7 @@
 Name:           mcp-server-pegelonline
 Version:        %{version}
 Release:        %{build_number}%{?dist}
-Summary:        MCP server for the German Pegelonline Dict API (gauge stations)
+Summary:        MCP server for gauge stations on German federal waterways (Pegelonline)
 
 License:        Apache-2.0
 URL:            https://github.com/52North/mcp-server-pegelonline
@@ -38,8 +38,9 @@ Requires(pre):  shadow-utils
 %{?systemd_requires}
 
 %description
-A Model Context Protocol (MCP) server that exposes tools to search for and query
-water-level gauge stations in Germany via the Pegelonline Dict API. This package
+A Model Context Protocol (MCP) server for gauge stations on German federal
+waterways: it finds stations via the Pegelonline Dict API and reads their
+metadata and measurements from the official Pegelonline REST API. This package
 ships the application together with a self-contained Python virtualenv.
 
 A minimal systemd unit is installed and preset (not started) on install. It reads

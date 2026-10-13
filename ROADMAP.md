@@ -1,6 +1,6 @@
 # Roadmap
 
-Backlog of technical and functional enhancements for the Pegelonline Dict API MCP server, based on a review of the current implementation in [pegelonline_mcp/](pegelonline_mcp/).
+Backlog of technical and functional enhancements for the Pegelonline MCP server, based on a review of the current implementation in [pegelonline_mcp/](pegelonline_mcp/).
 
 ## Technical & code enhancements
 

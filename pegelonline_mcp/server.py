@@ -43,7 +43,7 @@ Interpreting values:
   1 cm are usually measurement noise.
 """
 
-mcp = FastMCP("Pegelonline Dict API", instructions=INSTRUCTIONS)
+mcp = FastMCP("Pegelonline", instructions=INSTRUCTIONS)
 
 tools_stations.register(mcp)
 tools_measurements.register(mcp)

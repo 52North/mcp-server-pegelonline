@@ -1,4 +1,4 @@
-# Pegelonline Dict API MCP Server
+# Pegelonline MCP Server
 
 An MCP server for gauge stations on German federal waterways: it finds stations via
 the Pegelonline Dict API and reads their metadata and measurements from the official

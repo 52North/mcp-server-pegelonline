@@ -1,7 +1,7 @@
 # Minimal reference unit. Configuration is read from the packaged env file
 
 [Unit]
-Description=Pegelonline-Dict MCP Server (Streamable HTTP)
+Description=Pegelonline MCP Server (Streamable HTTP)
 After=network-online.target
 Wants=network-online.target
 
