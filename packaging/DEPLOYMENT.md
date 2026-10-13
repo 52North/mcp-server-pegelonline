@@ -48,7 +48,7 @@ needs network access to PyPI.
 
 | Path | Owner | Notes |
 |------|-------|-------|
-| `/opt/mcp-server-pegelonline/app/` | root | `pegelonline_mcp/` package (incl. `static/stations_map.html`), openapi json |
+| `/opt/mcp-server-pegelonline/app/` | root | `pegelonline_mcp/` package (incl. `static/stations_map.html`) |
 | `/opt/mcp-server-pegelonline/venv/` | root | bundled virtualenv (read-only at runtime) |
 | `/usr/lib/systemd/system/mcp-server-pegelonline.service` | root | single-process uvicorn unit (`uvicorn pegelonline_mcp.asgi:app`, working directory `app/`), hardened (read-only system, no capabilities, private `/tmp` and devices, only IP and Unix sockets) |
 | `/etc/mcp-server-pegelonline/` (dir) | `root:mcpsvc` (0750) | config dir |

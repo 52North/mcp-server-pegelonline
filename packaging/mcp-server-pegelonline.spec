@@ -30,7 +30,6 @@ Source0:        %{source}
 BuildArch:      x86_64
 BuildRequires:  python3.12
 BuildRequires:  python3.12-devel
-BuildRequires:  python3-pip
 BuildRequires:  systemd-rpm-macros
 
 # The bundled venv is built on, and runs against, the system python3.12.
@@ -52,8 +51,7 @@ The server speaks the Streamable HTTP transport at /mcp and exposes a health pro
 %autosetup -n %{source_name}
 
 %build
-# Nothing to compile here; the venv is materialized in %%install because a
-# virtualenv must be created at its final absolute path.
+# Nothing to compile here; the venv is materialized in %%install.
 
 %install
 # Bundled virtualenv, built at the final target path inside the buildroot
@@ -79,7 +77,6 @@ uv run --frozen --only-group sbom cyclonedx-py environment \
 install -d -m 0755 %{buildroot}%{appdir}/app
 find pegelonline_mcp -type f ! -name '*.pyc' \
     -exec install -D -m 0644 {} %{buildroot}%{appdir}/app/{} \;
-install -m 0644 openapi-pegelonline-dict-api.json %{buildroot}%{appdir}/app/
 
 # Ship bytecode for the venv and the app: the service user cannot write
 # __pycache__ under %{appdir}, so every start would compile in memory.
@@ -128,7 +125,7 @@ done
 
 %files
 %license LICENSE
-%doc README.md ROADMAP.md %{appname}-bom.json
+%doc README.md %{appname}-bom.json
 %{_unitdir}/%{appname}.service
 %{appdir}
 %dir %attr(0750, root, %{svcgroup}) %{_sysconfdir}/%{appname}

@@ -29,8 +29,7 @@ source: requirements.txt
 	@tar czf $(SOURCE) -C $(PROJECT_ROOT) --transform "s,^,$(SOURCE_NAME)/," \
 			--exclude=__pycache__ \
 			pegelonline_mcp \
-			openapi-pegelonline-dict-api.json \
-			LICENSE README.md ROADMAP.md pyproject.toml uv.lock \
+			LICENSE README.md pyproject.toml uv.lock \
 			packaging/requirements.txt \
 			packaging/$(NAME).service \
 			packaging/mcp-server.env \

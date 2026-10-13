@@ -12,8 +12,7 @@ RUN dnf -y update && \
         rpmlint \
         systemd-rpm-macros \
         python3.12 \
-        python3.12-devel \
-        python3-pip && \
+        python3.12-devel && \
     dnf clean all
 
 # uv builds the relocatable virtualenv in the spec's %install (pinned for
@@ -26,8 +25,7 @@ WORKDIR /app
 # PROJECT_ROOT (packaging/..) and the spec's %install expect. Build context must
 # therefore be the repository root:
 COPY pegelonline_mcp/ ./pegelonline_mcp/
-COPY openapi-pegelonline-dict-api.json \
-     LICENSE README.md ROADMAP.md pyproject.toml uv.lock ./
+COPY LICENSE README.md pyproject.toml uv.lock ./
 
 # Packaging inputs (Makefile, spec, unit, env example, hashed requirements.txt).
 COPY packaging/ ./packaging/
