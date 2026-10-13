@@ -1,8 +1,4 @@
-"""Shared HTTP client for the upstream APIs.
-
-Not named ``http.py``: in the flat module layout that would shadow the
-standard library ``http`` package that httpx, starlette and uvicorn import.
-"""
+"""Shared HTTP client for the upstream APIs."""
 
 import asyncio
 import logging

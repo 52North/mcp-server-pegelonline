@@ -1,3 +1,5 @@
+"""The FastMCP server: client instructions, tools, resources and /healthz."""
+
 import logging
 
 from fastmcp import FastMCP
@@ -41,7 +43,6 @@ Interpreting values:
   1 cm are usually measurement noise.
 """
 
-# Initialize FastMCP server
 mcp = FastMCP("Pegelonline Dict API", instructions=INSTRUCTIONS)
 
 tools_stations.register(mcp)
