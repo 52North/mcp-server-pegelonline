@@ -9,7 +9,7 @@ from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.http_client import get_json
 from pegelonline_mcp.models import Measurement
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 # The official API keeps a little over 31 days of raw measurements, but
 # without `start` it returns only the last 10 days. A 35-day period reaches

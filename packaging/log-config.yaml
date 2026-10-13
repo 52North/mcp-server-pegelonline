@@ -21,8 +21,8 @@ root:
   handlers: [stderr]
 
 loggers:
-  # Application HTTP tracing (http_client.get_json).
-  pegelonline-dict:
+  # Application logs (all pegelonline_mcp modules).
+  pegelonline_mcp:
     level: INFO
   # Both log every request at INFO, duplicating the application's request logs.
   httpx:

@@ -12,7 +12,7 @@ LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 # own request logs; packaging/log-config.yaml quiets them for uvicorn.
 QUIET_LOGGERS = ("httpx", "mcp.server.lowlevel")
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 
 def configure_logging() -> None:

@@ -4,10 +4,14 @@ import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
+import pegelonline_mcp
 from pegelonline_mcp.logging_setup import QUIET_LOGGERS, configure_logging
+
+LOG_CONFIG = Path(__file__).parent.parent / "packaging" / "log-config.yaml"
 
 
 @pytest.fixture
@@ -65,3 +69,20 @@ def test_fastmcp_leaves_logging_to_the_runtime():
     env = {k: v for k, v in os.environ.items() if k != "FASTMCP_LOG_ENABLED"}
 
     assert fastmcp_logger_state(env) == (0, True)
+
+
+def test_log_config_sets_the_application_log_level():
+    # Applied in a fresh interpreter the way `uvicorn --log-config` does it;
+    # uvicorn.Config loads the file on construction. Every module logs via
+    # getLogger(__name__), so the package logger's level governs them all.
+    code = (
+        "import logging, sys, uvicorn; "
+        "uvicorn.Config('pegelonline_mcp.asgi:app', log_config=sys.argv[1]); "
+        "print(logging.getLogger(sys.argv[2]).level)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(LOG_CONFIG), pegelonline_mcp.__name__],
+        capture_output=True, text=True, check=True,
+    )
+
+    assert int(result.stdout) == logging.INFO

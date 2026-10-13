@@ -16,7 +16,7 @@ from pegelonline_mcp.models import (
     SpanCounts,
 )
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 # Most values a time span returns: a full day of a 1-minute series, so
 # hours=24 always fits, while 35 days of such a series (about 45 000 values)
@@ -72,6 +72,7 @@ async def get_latest_measurements(uuid: str) -> LatestMeasurements:
         "water": water_name(data),
         "measurements": measurements
     }
+
 
 async def get_recent_measurements(
     uuid: str, parameter: str, count: Count = 2, hours: Hours | None = None

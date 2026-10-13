@@ -6,9 +6,7 @@ from starlette.responses import PlainTextResponse
 
 from pegelonline_mcp import resources, tools_measurements, tools_stations
 
-# Share the application logger namespace with the other modules so a single
-# log-config entry ("pegelonline-dict") governs both the HTTP layer and these handlers.
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 # Server-wide guidance sent to clients on initialize; complements the
 # per-tool docstrings with workflow hints and domain pitfalls.

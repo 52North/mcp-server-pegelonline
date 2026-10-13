@@ -26,7 +26,7 @@ from pegelonline_mcp.models import (
 )
 from pegelonline_mcp.resources import MAP_UI_URI
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 
 async def search_stations(
@@ -109,6 +109,7 @@ async def search_stations(
         ],
     }
 
+
 async def get_station_info(uuid: str) -> StationInfo:
     """
     Fetch static metadata for a specific station (name, agency, coordinates,
@@ -148,6 +149,7 @@ async def get_station_info(uuid: str) -> StationInfo:
         "parameters": parameters,
     }
 
+
 async def _fetch_nearest_stations(
     latitude: float, longitude: float, radius_km: float, limit: int
 ) -> NearbyStations:
@@ -179,6 +181,7 @@ async def _fetch_nearest_stations(
         "stations": stations[:limit],
     }
 
+
 async def find_nearest_stations(
     latitude: Latitude,
     longitude: Longitude,
@@ -200,6 +203,7 @@ async def find_nearest_stations(
         latitude, longitude, radius_km, limit,
     )
     return await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
+
 
 async def show_stations_map(
     latitude: Latitude,

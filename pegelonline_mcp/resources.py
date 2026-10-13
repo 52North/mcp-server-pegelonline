@@ -10,7 +10,7 @@ from pegelonline_mcp import client
 from pegelonline_mcp.cache import cached
 from pegelonline_mcp.mapping import water_name
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 MAP_UI_URI = "ui://pegelonline-dict/stations-map"
 
@@ -20,6 +20,7 @@ def stations_map_ui() -> str:
     logger.info("stations_map_ui: serving Leaflet map resource %s", MAP_UI_URI)
     return (Path(__file__).parent / "static" / "stations_map.html").read_text(encoding="utf-8")
 
+
 @cached("water-bodies")
 async def list_water_bodies() -> str:
     """List all available water bodies (Gewässer)."""
@@ -27,6 +28,7 @@ async def list_water_bodies() -> str:
     result = "\n".join(_water_line(w) for w in waters)
     logger.info("list_water_bodies: fetched and cached %d water bodies", len(waters))
     return result
+
 
 @cached("states")
 async def list_states() -> str:
@@ -37,6 +39,7 @@ async def list_states() -> str:
     result = "\n".join(states)
     logger.info("list_states: fetched and cached %d states", len(states))
     return result
+
 
 async def list_stations_in_state(state: str) -> str:
     """List all stations in a specific federal state."""

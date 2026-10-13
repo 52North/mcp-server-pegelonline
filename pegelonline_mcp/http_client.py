@@ -14,7 +14,7 @@ from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp import __version__
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 30.0
 # A failed connection attempt never reached the server, so it is safe to

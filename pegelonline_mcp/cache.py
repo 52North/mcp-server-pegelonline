@@ -6,7 +6,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-logger = logging.getLogger("pegelonline-dict")
+logger = logging.getLogger(__name__)
 
 CACHE_TTL_SECONDS = 6 * 3600
 _cache: dict[str, tuple[float, Any]] = {}
