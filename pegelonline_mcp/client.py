@@ -64,9 +64,21 @@ def _measurements_url(uuid: str, parameter: str) -> str:
     return f"{_timeseries_url(uuid, parameter)}/measurements.json"
 
 
-async def fetch_timeseries(uuid: str, parameter: str) -> dict:
-    """Metadata of a station parameter: unit, interval, gauge zero and comment."""
-    return await get_json(f"{_timeseries_url(uuid, parameter)}.json")
+async def fetch_timeseries(
+    uuid: str, parameter: str, current: bool = False, characteristic_values: bool = False
+) -> dict:
+    """Metadata of a station parameter: unit, interval, gauge zero and comment.
+
+    Optionally with the current measurement and the characteristic values
+    (e.g., MNW, MHW, HSW).
+    """
+    params: dict[str, str] = {}
+    if current:
+        params["includeCurrentMeasurement"] = "true"
+    if characteristic_values:
+        params["includeCharacteristicValues"] = "true"
+    url = f"{_timeseries_url(uuid, parameter)}.json"
+    return await get_json(url, params=params or None)
 
 
 async def fetch_measurements(

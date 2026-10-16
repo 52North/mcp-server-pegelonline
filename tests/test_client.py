@@ -52,8 +52,23 @@ async def test_fetch_timeseries(respx_mock):
 
     timeseries = await client.fetch_timeseries(KOELN_UUID, "W")
 
-    assert route.called
+    assert dict(route.calls.last.request.url.params) == {}
     assert timeseries["unit"] == "cm"
+
+
+async def test_fetch_timeseries_current_and_characteristic_values(respx_mock):
+    route = respx_mock.get(TIMESERIES_URL).respond(
+        json=load_fixture("timeseries_koeln_w_characteristic")
+    )
+
+    await client.fetch_timeseries(
+        KOELN_UUID, "W", current=True, characteristic_values=True
+    )
+
+    assert dict(route.calls.last.request.url.params) == {
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
 
 
 @pytest.mark.parametrize(

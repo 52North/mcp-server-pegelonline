@@ -1,6 +1,6 @@
 """Mapping helpers that turn upstream station JSON into tool responses."""
 
-from pegelonline_mcp.models import ParameterInfo, StationSummary
+from pegelonline_mcp.models import CharacteristicValue, ParameterInfo, StationSummary
 
 
 def normalize_timeseries(station: dict) -> list[dict]:
@@ -45,6 +45,24 @@ def timeseries_comment(ts: dict) -> str | None:
     if not isinstance(comment, dict):
         return None
     return comment.get("longDescription") or comment.get("shortDescription")
+
+
+def characteristic_value(cv: dict) -> CharacteristicValue:
+    """Characteristic value of a timeseries (e.g., MNW or HSW).
+
+    Some long names end in a space, which is dropped.
+    """
+    longname = cv.get("longname")
+    return {
+        "shortname": cv.get("shortname"),
+        "longname": longname.strip() if isinstance(longname, str) else None,
+        "value": cv.get("value"),
+        "unit": cv.get("unit"),
+        "valid_from": cv.get("validFrom"),
+        "timespan_start": cv.get("timespanStart"),
+        "timespan_end": cv.get("timespanEnd"),
+        "occurrences": cv.get("occurrences"),
+    }
 
 
 def station_summary(station: dict) -> StationSummary:

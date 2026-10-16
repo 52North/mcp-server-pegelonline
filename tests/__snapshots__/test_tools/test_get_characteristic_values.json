@@ -1,0 +1,118 @@
+{
+  "characteristic_values": [
+    {
+      "longname": "gleichwertiger Wasserstand",
+      "occurrences": null,
+      "shortname": "GlW",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": "2023-01-01",
+      "value": 139.0
+    },
+    {
+      "longname": "verkehrsgesicherte Fahrrinnentiefe unter GlW (Tiefe unter GlW)",
+      "occurrences": null,
+      "shortname": "TuGLW",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": "2000-02-01",
+      "value": 250.0
+    },
+    {
+      "longname": "Marke_II",
+      "occurrences": null,
+      "shortname": "M_II",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": "1995-01-01",
+      "value": 830.0
+    },
+    {
+      "longname": "Marke_I",
+      "occurrences": null,
+      "shortname": "M_I",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": "1995-01-01",
+      "value": 620.0
+    },
+    {
+      "longname": "Höchster Hochwasserstand",
+      "occurrences": [
+        "1926-01-01"
+      ],
+      "shortname": "HHW",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": null,
+      "value": 1069.0
+    },
+    {
+      "longname": "Niedrigster Niedrigwasserstand",
+      "occurrences": [
+        "2018-10-23"
+      ],
+      "shortname": "NNW",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": null,
+      "value": 69.0
+    },
+    {
+      "longname": "Mittel der Niedrigwasserstände",
+      "occurrences": null,
+      "shortname": "MNW",
+      "timespan_end": "2020-10-31",
+      "timespan_start": "2010-11-01",
+      "unit": "cm",
+      "valid_from": null,
+      "value": 114.0
+    },
+    {
+      "longname": "Mittel der Tageswasserstände",
+      "occurrences": null,
+      "shortname": "MW",
+      "timespan_end": "2020-10-31",
+      "timespan_start": "2010-11-01",
+      "unit": "cm",
+      "valid_from": null,
+      "value": 297.0
+    },
+    {
+      "longname": "Mittel der Hochwasserstände",
+      "occurrences": null,
+      "shortname": "MHW",
+      "timespan_end": "2020-10-31",
+      "timespan_start": "2010-11-01",
+      "unit": "cm",
+      "valid_from": null,
+      "value": 725.0
+    },
+    {
+      "longname": "höchster Schifffahrtswasserstand",
+      "occurrences": null,
+      "shortname": "HSW",
+      "timespan_end": null,
+      "timespan_start": null,
+      "unit": "cm",
+      "valid_from": "1950-01-01",
+      "value": 830.0
+    }
+  ],
+  "comment": null,
+  "current": {
+    "state_mnw_mhw": "low",
+    "state_nsw_hsw": "normal",
+    "timestamp": "2026-10-16T09:30:00+02:00",
+    "value": 57.0
+  },
+  "parameter": "W",
+  "unit": "cm",
+  "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c"
+}

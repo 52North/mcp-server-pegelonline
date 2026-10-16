@@ -14,8 +14,15 @@ from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.constraints import Hours, RecentCount, Resolution
-from pegelonline_mcp.mapping import normalize_timeseries, timeseries_comment, water_name
+from pegelonline_mcp.mapping import (
+    characteristic_value,
+    normalize_timeseries,
+    timeseries_comment,
+    water_name,
+)
 from pegelonline_mcp.models import (
+    CharacteristicValues,
+    CurrentMeasurement,
     HistoryRows,
     HistorySummary,
     LatestMeasurement,
@@ -59,7 +66,8 @@ async def get_latest_measurements(uuid: str) -> LatestMeasurements:
       "normal" (below HSW) or "high" (at or above HSW).
     Both can also be "unknown" (no reference values for this timeseries),
     "commented" (malfunction or disturbance, see comment) or "out-dated"
-    (value older than 25 hours).
+    (value older than 25 hours). get_characteristic_values returns the
+    reference values themselves, to say more precisely how high W is.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -93,6 +101,71 @@ async def get_latest_measurements(uuid: str) -> LatestMeasurements:
         "station": data.get("longname"),
         "water": water_name(data),
         "measurements": measurements
+    }
+
+
+async def get_characteristic_values(
+    uuid: str, parameter: str = "W"
+) -> CharacteristicValues:
+    """
+    Fetch the characteristic values (Kennwerte) of a station's water level
+    together with its current value, to tell how high or low the water is:
+    e.g., between mean water (MW) and mean high water (MHW), or below the
+    lowest level ever measured (NNW). Only water levels (W) have
+    characteristic values; other parameters return an empty list, as do
+    water levels without any.
+
+    Each value carries its unit, mostly that of the measurements: cm
+    relative to the gauge zero, on some canals heights in m. The values come
+    in the API's order, each with its long name. The most common are:
+    - MNW, MW, MHW: mean low, mean daily and mean high water over the years
+      from timespan_start to timespan_end.
+    - NNW, HHW: lowest and highest level ever measured, with the dates (or
+      only years) in occurrences; NW and HW are the extremes of a timespan.
+    - HSW: highest navigable water level; M_I, M_II, M_III: flood marks at
+      which shipping restrictions take effect. Both apply from valid_from on.
+    - MTnw, MThw: mean tidal low and high water; NTnw, HThw their extremes.
+    TuGLW is a fairway depth below GlW, not a water level.
+
+    current holds the latest measurement and, for W, the two states that
+    get_latest_measurements reports; without MNW and MHW, or without HSW,
+    the corresponding state is "unknown". comment explains disturbances or
+    stale values, if there are any.
+
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+        parameter: The shortname of the parameter (default: 'W', the only one
+            with characteristic values).
+    """
+    logger.info("get_characteristic_values: uuid=%s parameter=%s", uuid, parameter)
+    timeseries = await client.fetch_timeseries(
+        uuid, parameter, current=True, characteristic_values=True
+    )
+
+    curr = timeseries.get("currentMeasurement")
+    current: CurrentMeasurement | None = None
+    if curr:
+        current = {
+            "timestamp": curr.get("timestamp"),
+            "value": curr.get("value"),
+            "state_mnw_mhw": curr.get("stateMnwMhw"),
+            "state_nsw_hsw": curr.get("stateNswHsw"),
+        }
+    values = [
+        characteristic_value(cv) for cv in timeseries.get("characteristicValues") or []
+    ]
+    logger.info(
+        "get_characteristic_values: uuid=%s parameter=%s -> %d values",
+        uuid, parameter, len(values),
+    )
+
+    return {
+        "uuid": uuid,
+        "parameter": parameter,
+        "unit": timeseries.get("unit"),
+        "comment": timeseries_comment(timeseries),
+        "current": current,
+        "characteristic_values": values,
     }
 
 
@@ -384,9 +457,10 @@ async def get_measurements_chart(
     The chart has no title, unit or legend. The y-axis shows the values in
     the timeseries' unit (see get_station_info) with a decimal comma, the
     x-axis German local time. Labeled horizontal lines are reference values
-    such as NNW or MThw. Gaps break the line, and an empty grid means no
-    values in the span. Some gauges add a dashed, lighter line, e.g. a
-    forecast that can reach past now; the measured values are the solid line.
+    such as NNW or MThw; get_characteristic_values returns them exactly.
+    Gaps break the line, and an empty grid means no values in the span.
+    Some gauges add a dashed, lighter line, e.g. a forecast that can reach
+    past now; the measured values are the solid line.
 
     The user may not see the image: some clients do not show it, others only
     inside the collapsed tool call. So describe what it shows in words.
@@ -420,6 +494,7 @@ async def get_measurements_chart(
 def register(mcp: FastMCP) -> None:
     """Register the measurement tools on the server."""
     mcp.tool(get_latest_measurements, annotations=READ_ONLY)
+    mcp.tool(get_characteristic_values, annotations=READ_ONLY)
     mcp.tool(get_recent_measurements, annotations=READ_ONLY)
     # Lets Claude Code keep the largest histories in context
     mcp.tool(

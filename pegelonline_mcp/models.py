@@ -132,6 +132,42 @@ class LatestMeasurements(TypedDict):
     measurements: list[LatestMeasurement]
 
 
+class CharacteristicValue(TypedDict):
+    """Characteristic value of a timeseries, e.g. mean high water (MHW)."""
+
+    shortname: str | None
+    longname: str | None
+    value: float | None
+    unit: str | None
+    # Fixed values such as HSW or the flood marks apply from a date on
+    valid_from: str | None
+    # Statistics such as MNW, MW and MHW cover a period of years
+    timespan_start: str | None
+    timespan_end: str | None
+    # Extremes such as NNW and HHW: the dates, or only years, they occurred on
+    occurrences: list[str] | None
+
+
+class CurrentMeasurement(TypedDict):
+    """Current measurement of one parameter with its two states."""
+
+    timestamp: str | None
+    value: float | None
+    state_mnw_mhw: str | None
+    state_nsw_hsw: str | None
+
+
+class CharacteristicValues(TypedDict):
+    """Characteristic values of one parameter, with its current measurement."""
+
+    uuid: str
+    parameter: str
+    unit: str | None
+    comment: str | None
+    current: CurrentMeasurement | None
+    characteristic_values: list[CharacteristicValue]
+
+
 class Measurement(TypedDict):
     """Single measurement as the official API returns it."""
 

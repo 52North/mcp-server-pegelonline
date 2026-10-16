@@ -1,5 +1,8 @@
+import pytest
+
 from conftest import load_fixture
 from pegelonline_mcp.mapping import (
+    characteristic_value,
     normalize_timeseries,
     parameter_info,
     station_summary,
@@ -72,6 +75,49 @@ def test_timeseries_comment_falls_back_to_short_description():
 def test_timeseries_comment_missing():
     assert timeseries_comment(W) is None
     assert timeseries_comment({"comment": None}) is None
+
+
+@pytest.mark.parametrize(
+    ("shortname", "fields"),
+    [
+        ("HSW", {"valid_from": "1950-01-01"}),
+        ("MNW", {"timespan_start": "2010-11-01", "timespan_end": "2020-10-31"}),
+        ("NNW", {"occurrences": ["2018-10-23"]}),
+    ],
+    ids=["fixed", "statistic", "extreme"],
+)
+def test_characteristic_value(shortname, fields):
+    # Recorded Köln W: each kind of value carries other optional fields
+    values = load_fixture("timeseries_koeln_w_characteristic")["characteristicValues"]
+    cv = next(v for v in values if v["shortname"] == shortname)
+
+    optional = {
+        "valid_from": None, "timespan_start": None, "timespan_end": None,
+        "occurrences": None,
+    }
+    assert characteristic_value(cv) == {
+        "shortname": shortname,
+        "longname": cv["longname"].strip(),
+        "value": cv["value"],
+        "unit": "cm",
+        **optional,
+        **fields,
+    }
+
+
+def test_characteristic_value_strips_longname():
+    cv = {"shortname": "MW", "longname": "Mittel der Tageswasserstände "}
+
+    assert characteristic_value(cv)["longname"] == "Mittel der Tageswasserstände"
+
+
+def test_characteristic_value_missing_fields():
+    assert characteristic_value({}) == dict.fromkeys(
+        [
+            "shortname", "longname", "value", "unit", "valid_from",
+            "timespan_start", "timespan_end", "occurrences",
+        ]
+    )
 
 
 def test_station_summary():

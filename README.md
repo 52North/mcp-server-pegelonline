@@ -14,6 +14,9 @@ Pegelonline REST API.
 - **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
   the latest values, `get_measurement_history` any span of the last 31 days as
   compact rows or hourly and daily summaries; all with unit and timeseries comment.
+- **Characteristic values**: `get_characteristic_values` returns a water level's
+  reference values (MNW, MW, MHW, HSW, record low and high, tidal values) with the
+  current value, so a reading can be told high or low.
 - **Charts**: `get_measurements_chart` returns the official line chart of such a
   span as an image for the model, about 480 image tokens whatever the span.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
@@ -200,6 +203,18 @@ temperature) for a station by `uuid`, each with the comment on its timeseries
 (e.g., a disturbance or why discharge is currently not determined). Water levels
 also report two states: `state_mnw_mhw` relative to mean low and mean high
 water, and `state_nsw_hsw` relative to the highest navigable water level.
+
+### `get_characteristic_values`
+
+Returns the characteristic values (Kennwerte) of one parameter of a station by
+`uuid` (`parameter` defaults to `W`) together with its current value and both
+states, from a single request. Only water levels have characteristic values,
+about three quarters of them; other parameters return an empty list. Each value
+has `shortname`, `longname`, `value` and `unit`, plus `valid_from` for fixed
+values (HSW, flood marks), `timespan_start`/`timespan_end` for statistics (MNW,
+MW, MHW) or `occurrences` for extremes (NNW, HHW; dates or only years). They
+come in the API's order, since not all are water levels: TuGLW is a fairway
+depth, and on canals OBW and UBW are heights in `m` while W is in `m+NN`.
 
 ### `get_recent_measurements`
 

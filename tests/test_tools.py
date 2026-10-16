@@ -249,6 +249,58 @@ async def test_get_latest_measurements_reports_both_states(client, respx_mock):
     assert (w["state_mnw_mhw"], w["state_nsw_hsw"]) == ("unknown", "normal")
 
 
+async def test_get_characteristic_values(client, respx_mock, snapshot_json):
+    route = respx_mock.get(TIMESERIES_URL).respond(
+        json=load_fixture("timeseries_koeln_w_characteristic")
+    )
+
+    # W by default: only water levels have characteristic values
+    result = await client.call_tool("get_characteristic_values", {"uuid": KOELN_UUID})
+
+    # Current value and characteristic values come in a single request
+    assert dict(route.calls.last.request.url.params) == {
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+    assert result.structured_content == snapshot_json
+
+
+async def test_get_characteristic_values_without_values(client, respx_mock):
+    # Recorded Köln Q: no characteristic values, here also no current value
+    station = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}"
+    respx_mock.get(f"{station}/Q.json").respond(json=load_fixture("timeseries_koeln_q"))
+
+    result = await client.call_tool(
+        "get_characteristic_values", {"uuid": KOELN_UUID, "parameter": "Q"}
+    )
+
+    data = result.structured_content
+    assert data["characteristic_values"] == []
+    assert data["current"] is None
+    assert data["unit"] == "m³/s"
+    assert data["comment"] == "Abflussermittlung unter W = 50cm aktuell nicht möglich"
+
+
+async def test_get_characteristic_values_tolerates_missing_fields(client, respx_mock):
+    timeseries = load_fixture("timeseries_koeln_w_characteristic")
+    del timeseries["unit"]
+    for key in ("stateMnwMhw", "stateNswHsw"):
+        del timeseries["currentMeasurement"][key]
+    for cv in timeseries["characteristicValues"]:
+        for key in ("longname", "unit", "value"):
+            del cv[key]
+    respx_mock.get(TIMESERIES_URL).respond(json=timeseries)
+
+    result = await client.call_tool("get_characteristic_values", KOELN_W)
+
+    data = result.structured_content
+    assert data["unit"] is None
+    assert data["current"]["state_mnw_mhw"] is None
+    for cv in data["characteristic_values"]:
+        for key in ("longname", "unit", "value"):
+            assert cv[key] is None, key
+
+
 async def test_get_recent_measurements(client, respx_mock, timeseries_w, snapshot_json):
     route = respx_mock.get(MEASUREMENTS_URL).respond(json=load_fixture("measurements_w"))
 
@@ -708,6 +760,10 @@ async def test_history_allows_large_results(client):
         ),
         ("get_latest_measurements", {"station", "water", "measurements"}),
         (
+            "get_characteristic_values",
+            {"uuid", "parameter", "unit", "comment", "current", "characteristic_values"},
+        ),
+        (
             "get_recent_measurements",
             {"uuid", "parameter", "unit", "comment", "measurements"},
         ),
@@ -743,6 +799,7 @@ async def test_tools_are_annotated_read_only(client):
         "find_nearest_stations",
         "show_stations_map",
         "get_latest_measurements",
+        "get_characteristic_values",
         "get_recent_measurements",
         "get_measurement_history",
         "get_measurements_chart",

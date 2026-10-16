@@ -23,8 +23,8 @@ Workflow:
 - The location tools expect WGS84 coordinates, not place names: resolve the
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info and the
-  measurement tools: get_latest_measurements, get_recent_measurements,
-  get_measurement_history and get_measurements_chart.
+  measurement tools: get_latest_measurements, get_characteristic_values,
+  get_recent_measurements, get_measurement_history and get_measurements_chart.
 - For a time span (e.g., the last 24 hours, a week or a past day), call
   get_measurement_history instead of estimating a count for
   get_recent_measurements: measurement intervals differ per timeseries (1, 5,
@@ -41,6 +41,10 @@ Interpreting values:
   not water depth. Absolute height = gaugeZero (m above NHN) + W / 100.
   Some stations, mostly on canals, report W directly in m+NN; the unit
   returned with the measured values tells which.
+- To tell how high or low a water level is, compare it with the
+  characteristic values from get_characteristic_values (e.g., MNW, MW, MHW,
+  HSW, the record low NNW and high HHW); state_mnw_mhw and state_nsw_hsw
+  give only a rough class.
 - Discharge Q may be missing, stale or unreliable at low water; compare
   timestamps. get_station_info, get_latest_measurements,
   get_recent_measurements and get_measurement_history return a comment per
