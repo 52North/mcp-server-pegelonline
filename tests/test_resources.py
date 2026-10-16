@@ -74,6 +74,45 @@ async def test_list_states_does_not_cache_empty_response(client, respx_mock):
     assert route.call_count == 2
 
 
+@pytest.mark.parametrize(
+    ("uri", "expected"),
+    [
+        (
+            "agencies://list",
+            [
+                "HAMBURG PORT AUTHORITY", "STANDORT DUISBURG", "STANDORT KÖLN",
+                "STANDORT LAUENBURG",
+            ],
+        ),
+        ("catchment-areas://list", ["Elbe", "Rhein"]),
+    ],
+)
+async def test_list_station_field_values(client, respx_mock, uri, expected):
+    respx_mock.get(SEARCH_URL).respond(json=all_stations())
+
+    text = await read_text(client, uri)
+
+    assert text.splitlines() == expected
+
+
+async def test_list_catchment_areas_skips_stations_without_one(client, respx_mock):
+    # Recorded land=Sachsen response: one station has no einzugsgebiet
+    respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_sachsen"))
+
+    text = await read_text(client, "catchment-areas://list")
+
+    assert text.splitlines() == ["Aller", "Elbe"]
+
+
+async def test_lists_share_one_station_download(client, respx_mock):
+    route = respx_mock.get(SEARCH_URL).respond(json=all_stations())
+
+    for uri in ("states://list", "agencies://list", "catchment-areas://list"):
+        assert await read_text(client, uri)
+
+    assert route.call_count == 1
+
+
 async def test_list_stations_in_state(client, respx_mock, snapshot_json):
     route = respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_hamburg"))
 

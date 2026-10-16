@@ -21,7 +21,8 @@ Pegelonline REST API.
   span as an image for the model, about 480 image tokens whatever the span.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
   (MCP App) in Claude Desktop and claude.ai.
-- **Resources**: water bodies, federal states and the stations per state.
+- **Resources**: water bodies, federal states, agencies, catchment areas and the
+  stations per state.
 - **Read-only**: every tool is annotated as read-only.
 - **Deployment**: stdio for local clients, stateless Streamable HTTP for servers,
   packaged as an RPM for RHEL 9.
@@ -305,8 +306,10 @@ integrity hashes and only accepts messages from its host frame.
 ## Resources
 
 - `water-bodies://list`: Returns a list of all available water bodies (Gewässer).
-- `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations.
+- `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations. It shares one cached download of all stations with `agencies://list` and `catchment-areas://list`.
 - `states://{state}/stations`: Returns a list of all stations within a specific federal state (e.g., `states://Nordrhein-Westfalen/stations`).
+- `agencies://list`: Returns a list of all agencies (WSV locations and other operators) that run gauge stations, the values of the `agency` search filter.
+- `catchment-areas://list`: Returns a list of all catchment areas (Einzugsgebiete) that have gauge stations, the values of the `einzugsgebiet` search filter. Two names come from the Dict API with a replacement character instead of an umlaut (`Fr�nkische Rezat`, `la Moselle Rivi�re`) and are listed as they are, since the filter matches them that way; search for a part such as `Rezat` or `Mosel`.
 - `ui://pegelonline-dict/stations-map`: Leaflet map UI (`pegelonline_mcp/static/stations_map.html`) rendered inline by MCP-Apps-capable clients for the `show_stations_map` tool.
 
 ## Environment variables

@@ -1,4 +1,5 @@
-"""Resources: water bodies, states, stations per state and the map UI."""
+"""Resources: water bodies, states, agencies and catchment areas, the stations
+per state and the map UI."""
 
 import logging
 from pathlib import Path
@@ -30,15 +31,38 @@ async def list_water_bodies() -> str:
     return result
 
 
-@cached("states")
+@cached("stations")
+async def _all_stations() -> list[dict]:
+    """Every station of the dict API, shared by the lists of their field values."""
+    stations = await client.search()
+    logger.info("all stations: fetched and cached %d stations", len(stations))
+    return stations
+
+
+async def _distinct(field: str) -> list[str]:
+    """Sorted distinct values of a station field; stations without it are skipped."""
+    return sorted({s[field] for s in await _all_stations() if s.get(field)})
+
+
 async def list_states() -> str:
     """List all federal states (Bundesländer) that have stations."""
-    # We fetch all stations from the dict-api to get unique states
-    stations = await client.search()
-    states = sorted({s["land"] for s in stations if s.get("land")})
-    result = "\n".join(states)
-    logger.info("list_states: fetched and cached %d states", len(states))
-    return result
+    states = await _distinct("land")
+    logger.info("list_states: %d states", len(states))
+    return "\n".join(states)
+
+
+async def list_agencies() -> str:
+    """List all agencies (WSV locations and other operators) that run stations."""
+    agencies = await _distinct("agency")
+    logger.info("list_agencies: %d agencies", len(agencies))
+    return "\n".join(agencies)
+
+
+async def list_catchment_areas() -> str:
+    """List all catchment areas (Einzugsgebiete) that have stations."""
+    areas = await _distinct("einzugsgebiet")
+    logger.info("list_catchment_areas: %d catchment areas", len(areas))
+    return "\n".join(areas)
 
 
 async def list_stations_in_state(state: str) -> str:
@@ -98,3 +122,5 @@ def register(mcp: FastMCP) -> None:
     mcp.resource("water-bodies://list")(list_water_bodies)
     mcp.resource("states://list")(list_states)
     mcp.resource("states://{state}/stations")(list_stations_in_state)
+    mcp.resource("agencies://list")(list_agencies)
+    mcp.resource("catchment-areas://list")(list_catchment_areas)
