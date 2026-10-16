@@ -587,7 +587,8 @@ async def get_measurements_chart(
     past now; the measured values are the solid line.
 
     The user may not see the image: some clients do not show it, others only
-    inside the collapsed tool call. So describe what it shows in words.
+    inside the collapsed tool call. So describe what it shows in words. To
+    show the user a chart, call show_measurements_chart instead.
 
     Args:
         uuid: The unique identifier (UUID) of the station.

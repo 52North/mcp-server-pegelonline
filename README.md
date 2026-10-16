@@ -23,6 +23,9 @@ Pegelonline REST API.
   span as an image for the model, about 480 image tokens whatever the span.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
   (MCP App) in Claude Desktop and claude.ai.
+- **Interactive chart**: `show_measurements_chart` shows the user a zoomable chart
+  of such a span (MCP App, uPlot) with switchable characteristic values in Claude
+  Desktop; the model receives only the summary.
 - **Resources**: water bodies, federal states, agencies, catchment areas and the
   stations per state.
 - **Read-only**: every tool is annotated as read-only.
@@ -50,7 +53,7 @@ To run the server in dev mode (with inspector):
 uv run fastmcp dev inspector pegelonline_mcp/server.py
 ```
 
-To preview the MCP App UI (interactive station map) in the browser:
+To preview the MCP App UIs (station map, measurements chart) in the browser:
 ```bash
 uv run fastmcp dev apps pegelonline_mcp/server.py
 ```
@@ -108,14 +111,16 @@ claude mcp add pegelonline-dict -- uv --directory /path/to/mcp-server-pegelonlin
 ```
 
 Note: Claude Code is a CLI and does not render MCP Apps — the `show_stations_map`
-tool falls back to its structured station list there. Nor does it display images:
-the chart from `get_measurements_chart` reaches only the model.
+tool falls back to its structured station list there, and `show_measurements_chart`
+returns only its summary; Claude Code keeps the app-only `get_chart_values` from the
+model. Nor does it display images: the chart from `get_measurements_chart` reaches
+only the model.
 
 ### Registering with Claude Desktop
 
 Claude Desktop supports MCP Apps, so `show_stations_map` renders the interactive
-Leaflet map inline. The chart from `get_measurements_chart`, by contrast, appears only
-inside the expanded tool call. Add the server to `%APPDATA%\Claude\claude_desktop_config.json`
+Leaflet map inline and `show_measurements_chart` the interactive chart. The image from
+`get_measurements_chart`, by contrast, appears only inside the expanded tool call. Add the server to `%APPDATA%\Claude\claude_desktop_config.json`
 (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
@@ -159,12 +164,13 @@ All tools only read from the Pegelonline APIs and are annotated with
 `readOnlyHint` and `openWorldHint`, so clients can allow them without asking
 for confirmation.
 
-Each tool except `get_measurements_chart` publishes an output schema that describes
-its response, generated from the types in
+Each tool except `get_measurements_chart` and `get_chart_values` publishes an output
+schema that describes its response, generated from the types in
 [`pegelonline_mcp/models.py`](pegelonline_mcp/models.py). The server validates every
 such response against it. Fields taken from the upstream APIs may be `null`, since
 some stations lack e.g. coordinates or a district. `get_measurements_chart` returns
-MCP image content (`image/png`) instead.
+MCP image content (`image/png`) instead, `get_chart_values` its values in
+`structuredContent` without a schema.
 
 ### `search_stations`
 
@@ -328,6 +334,38 @@ forecast; the measured values are the solid line.
 The tool sends a single request, so an unknown station or parameter fails with the
 usual 404 hint, and a response that is not `image/png` becomes an error.
 
+### `show_measurements_chart`
+
+Shows the user an **interactive chart** (MCP App) of one parameter of a station, for
+the same time spans as `get_measurement_history`: the last `hours` (default: 24) or a
+window from `start` to `end`. The model receives only the summary: station, water
+body, unit, timeseries comment, `interval_minutes`, the window as `start` and `end` in
+UTC, and the `summary` of `get_measurement_history`, but no rows; for 31 days of a
+1-minute series that is about 520 characters. Clients without MCP Apps show nothing.
+
+The UI ([`pegelonline_mcp/static/measurements_chart.html`](pegelonline_mcp/static/measurements_chart.html))
+fetches the values of exactly this window through `get_chart_values`, so the curve
+matches the summary, and the characteristic values through
+`get_characteristic_values`. It draws them with uPlot, loaded from unpkg pinned by
+subresource integrity hashes: zoom by dragging, a crosshair with the values in the
+legend, the time axis in German local time, gaps as breaks in the line.
+Characteristic values in the series' unit are dashed lines that the legend switches
+on and off; at first only those within the curve's range are shown, so a far-off
+record level does not flatten the curve. Texts are German for a German host locale
+and English otherwise; numbers and dates follow the locale. The UI only accepts
+messages from its host frame.
+
+`get_chart_values` (`uuid`, `parameter`, `start`, `end`) serves only this UI: its
+`_meta.ui.visibility` is `["app"]`, so Claude Desktop and Claude Code do not offer it
+to the model. It returns the values in `structuredContent` only, with a one-sentence
+text: `start`, `interval_minutes` and a flat list of `values` with `null` for gaps, or
+`timestamps` instead for values off the series' grid. 31 days of a 1-minute series
+take about 179 000 characters. It does not limit how far back `start` lies, so a chart
+reopened later shows what the API still keeps.
+
+Claude Desktop lets the UI call tools and keeps `get_chart_values` from the model
+(checked on 2026-10-16 with a probe); claude.ai has not been checked yet.
+
 ### `find_nearest_stations`
 
 Returns gauge stations around a coordinate (`latitude`, `longitude`),
@@ -353,6 +391,7 @@ integrity hashes and only accepts messages from its host frame.
 - `agencies://list`: Returns a list of all agencies (WSV locations and other operators) that run gauge stations, the values of the `agency` search filter.
 - `catchment-areas://list`: Returns a list of all catchment areas (Einzugsgebiete) that have gauge stations, the values of the `einzugsgebiet` search filter. Two names come from the Dict API with a replacement character instead of an umlaut (`Fr�nkische Rezat`, `la Moselle Rivi�re`) and are listed as they are, since the filter matches them that way; search for a part such as `Rezat` or `Mosel`.
 - `ui://pegelonline-dict/stations-map`: Leaflet map UI (`pegelonline_mcp/static/stations_map.html`) rendered inline by MCP-Apps-capable clients for the `show_stations_map` tool.
+- `ui://pegelonline-dict/measurements-chart`: uPlot chart UI (`pegelonline_mcp/static/measurements_chart.html`) rendered inline by MCP-Apps-capable clients for the `show_measurements_chart` tool.
 
 ## Environment variables
 

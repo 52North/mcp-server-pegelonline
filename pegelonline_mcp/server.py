@@ -26,7 +26,8 @@ Workflow:
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info and the
   measurement tools: get_latest_measurements, get_characteristic_values,
-  get_recent_measurements, get_measurement_history and get_measurements_chart.
+  get_recent_measurements, get_measurement_history, get_measurements_chart
+  and show_measurements_chart.
   For the current value of one parameter at several stations, call
   compare_stations once instead of get_latest_measurements per station.
 - For a time span (e.g., the last 24 hours, a week or a past day), call
@@ -35,6 +36,11 @@ Workflow:
   10, 15 or 60 minutes; equidistance_minutes in get_station_info). The
   official API keeps a little over 31 days. Long spans of short-interval
   series come as hourly min/mean/max; resolution in the response says so.
+- When the user wants to see a chart of a parameter, call
+  show_measurements_chart, analogous to show_stations_map: clients with MCP
+  Apps show the user an interactive chart of the span, and you receive only
+  its summary. In clients without MCP Apps (e.g., Claude Code) the user sees
+  nothing; describe the course from get_measurements_chart instead.
 - To see how a parameter developed (trend, peaks, reference lines such as
   NNW), call get_measurements_chart: a chart image that costs the same few
   hundred tokens for any span. Take exact values from get_measurement_history,
