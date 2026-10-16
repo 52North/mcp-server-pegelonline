@@ -25,7 +25,7 @@ Pegelonline REST API.
   (MCP App) in Claude Desktop and claude.ai.
 - **Interactive chart**: `show_measurements_chart` shows the user a zoomable chart
   of such a span (MCP App, uPlot) with switchable characteristic values in Claude
-  Desktop; the model receives only the summary.
+  Desktop and claude.ai; the model receives only the summary.
 - **Resources**: water bodies, federal states, agencies, catchment areas and the
   stations per state.
 - **Read-only**: every tool is annotated as read-only.
@@ -156,7 +156,8 @@ using the Streamable HTTP transport:
 3. In claude.ai open **Settings → Connectors → Add custom connector** and enter the
    MCP endpoint URL (FastMCP serves it under `/mcp`, e.g. `https://your-host/mcp`).
 4. Enable the connector in a conversation. MCP Apps are rendered inline, so the
-   station map works there as well.
+   station map and the interactive chart work there as well. The image from
+   `get_measurements_chart` is visible in the chat.
 
 ## Tools
 
@@ -356,15 +357,15 @@ and English otherwise; numbers and dates follow the locale. The UI only accepts
 messages from its host frame.
 
 `get_chart_values` (`uuid`, `parameter`, `start`, `end`) serves only this UI: its
-`_meta.ui.visibility` is `["app"]`, so Claude Desktop and Claude Code do not offer it
-to the model. It returns the values in `structuredContent` only, with a one-sentence
-text: `start`, `interval_minutes` and a flat list of `values` with `null` for gaps, or
-`timestamps` instead for values off the series' grid. 31 days of a 1-minute series
-take about 179 000 characters. It does not limit how far back `start` lies, so a chart
-reopened later shows what the API still keeps.
+`_meta.ui.visibility` is `["app"]`, so Claude Desktop, claude.ai and Claude Code do
+not offer it to the model. It returns the values in `structuredContent` only, with a
+one-sentence text: `start`, `interval_minutes` and a flat list of `values` with `null`
+for gaps, or `timestamps` instead for values off the series' grid. 31 days of a
+1-minute series take about 179 000 characters. It does not limit how far back `start`
+lies, so a chart reopened later shows what the API still keeps.
 
-Claude Desktop lets the UI call tools and keeps `get_chart_values` from the model
-(checked on 2026-10-16 with a probe); claude.ai has not been checked yet.
+Claude Desktop and claude.ai let the UI call tools, pass it these 179 000 characters
+and keep `get_chart_values` from the model (checked on 2026-10-16).
 
 ### `find_nearest_stations`
 
