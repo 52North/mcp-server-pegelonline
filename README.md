@@ -295,7 +295,9 @@ time ends appears twice, once with `+02:00` and once with `+01:00`:
   a 15-minute series), otherwise as `hour`. The whole history of 15- and
   60-minute series always comes raw.
 - `raw`: raw values; beyond 3360 slots only the newest rows, with `truncated`.
-- `hour`, `day`: `min`, `mean` and `max` per hour or calendar day.
+- `hour`, `day`: `min`, `mean` and `max` per hour or calendar day, and `n`, the
+  number of values behind them. Fewer than the interval allows mean gaps; the
+  first and last row may also be cut off by the window.
 
 Raw rows need the values on the series' grid. Without a known interval, or with
 values off the grid, `auto` and `raw` summarize per hour.

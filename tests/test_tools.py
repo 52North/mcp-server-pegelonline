@@ -635,6 +635,24 @@ async def test_get_measurement_history_marks_gaps(client, respx_mock):
     assert (data["summary"]["count"], data["summary"]["missing"]) == (7, 5)
 
 
+async def test_get_measurement_history_counts_values_per_hour(client, respx_mock):
+    # 12:30 and the whole hour from 13:00 are missing
+    mock_history(respx_mock, series(
+        datetime(2026, 10, 6, 10, 0, tzinfo=UTC),
+        [50.0, 50.5, None, 51.0, None, None, None, None, 52.0, 52.0, 52.0, 52.0],
+    ))
+
+    result = await client.call_tool(
+        "get_measurement_history", {**KOELN_W, "resolution": "hour"}
+    )
+
+    # n shows the sparse hour; the empty one is left out
+    assert result.structured_content["rows"] == {
+        "2026-10-06T12:00+02:00": [50, 50.5, 51, 3],
+        "2026-10-06T14:00+02:00": [52, 52, 52, 4],
+    }
+
+
 async def test_get_measurement_history_names_repeated_hour_by_offset(client, respx_mock):
     # On 25 October 2026 the clocks go back from 03:00 CEST to 02:00 CET
     mock_history(respx_mock, series(datetime(2026, 10, 24, 23, 0, tzinfo=UTC), [48.0] * 16))
@@ -682,9 +700,11 @@ async def test_get_measurement_history_auto_summarizes_per_hour(
 
     data = result.structured_content
     assert (data["resolution"], data["truncated"]) == ("hour", False)
-    assert data["columns"] == ["min", "mean", "max"]
+    assert data["columns"] == ["min", "mean", "max", "n"]
     assert len(data["rows"]) == 73
-    assert data["rows"]["2026-10-08T12:00+02:00"] == [48, 48, 48]
+    assert data["rows"]["2026-10-08T11:00+02:00"] == [48, 48, 48, 60]
+    # The window ends at 12:00, so the last hour holds a single value
+    assert data["rows"]["2026-10-08T12:00+02:00"] == [48, 48, 48, 1]
     assert data["summary"]["count"] == 3 * 24 * 60
 
 
@@ -719,8 +739,8 @@ async def test_get_measurement_history_by_day(client, respx_mock):
     )
 
     data = result.structured_content
-    assert (data["resolution"], data["columns"]) == ("day", ["min", "mean", "max"])
-    assert data["rows"] == {"2026-10-06": [1, 1.5, 2], "2026-10-07": [1, 1.33, 2]}
+    assert (data["resolution"], data["columns"]) == ("day", ["min", "mean", "max", "n"])
+    assert data["rows"] == {"2026-10-06": [1, 1.5, 2, 2], "2026-10-07": [1, 1.33, 2, 3]}
 
 
 async def test_get_measurement_history_summary(client, respx_mock):
@@ -775,7 +795,7 @@ async def test_get_measurement_history_without_grid_summarizes_per_hour(
 
     data = result.structured_content
     assert (data["resolution"], data["truncated"]) == ("hour", False)
-    assert data["rows"] == {"2026-10-06T12:00+02:00": [48, 48, 48]}
+    assert data["rows"] == {"2026-10-06T12:00+02:00": [48, 48, 48, 3]}
     assert data["summary"]["missing"] is None
 
 

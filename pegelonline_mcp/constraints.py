@@ -22,7 +22,7 @@ Latitude = Annotated[float, Field(ge=-90, le=90)]
 Longitude = Annotated[float, Field(ge=-180, le=180)]
 # A time span reaching back further than the kept history adds nothing
 Hours = Annotated[float, Field(gt=0, le=HISTORY_MINUTES // 60)]
-# Rows of a measurement history: raw values, or min/mean/max per hour or
+# Rows of a measurement history: raw values, or min/mean/max/n per hour or
 # day; auto takes raw values while they fit
 Resolution = Literal["auto", "raw", "hour", "day"]
 # The search_stations filters whose values list_search_values lists

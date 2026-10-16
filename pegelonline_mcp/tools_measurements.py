@@ -47,8 +47,8 @@ MAX_RAW_SLOTS = 35 * 24 * 4
 # Claude Code moves tool results over 50 000 characters into a file and
 # shows the model only its path; the largest histories come close to that.
 MAX_RESULT_CHARS = 60_000
-# Columns of the rows that summarize an hour or a day
-SUMMARY_COLUMNS = ["min", "mean", "max"]
+# Columns of the rows that summarize an hour or a day; n counts their values
+SUMMARY_COLUMNS = ["min", "mean", "max", "n"]
 
 # A measured value with its time
 Point = tuple[datetime, float]
@@ -356,12 +356,12 @@ def _raw_rows(points: list[Point], interval: int) -> tuple[list[str], Rows]:
 
 
 def _summarized_rows(points: list[Point], key: Callable[[datetime], str]) -> Rows:
-    """min, mean and max of the values that share a key, e.g. their hour."""
+    """min, mean, max and number of the values that share a key, e.g. their hour."""
     groups: dict[str, list[float]] = {}
     for t, value in points:
         groups.setdefault(key(t), []).append(value)
     return {
-        k: [_compact(min(values)), _mean(values), _compact(max(values))]
+        k: [_compact(min(values)), _mean(values), _compact(max(values)), len(values)]
         for k, values in groups.items()
     }
 
@@ -455,7 +455,10 @@ async def get_measurement_history(
       values of a single day of a 1-minute series, pass start and end.
     - 'raw': raw values; beyond 3360 slots only the newest rows, and
       truncated is true.
-    - 'hour' or 'day': min, mean and max per hour or calendar day.
+    - 'hour' or 'day': min, mean and max per hour or calendar day, and n,
+      the number of values behind them. Fewer than the interval allows
+      (e.g., 4 per hour at 15 minutes) mean gaps; the first and last row
+      may also be cut off by the window.
 
     summary covers all values of the span in any case: count, missing (grid
     slots without a value between the first and last one), first, last,
