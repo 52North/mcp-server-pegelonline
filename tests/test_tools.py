@@ -5,6 +5,7 @@ steps can prove the responses stay identical.
 """
 
 import base64
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -29,6 +30,7 @@ from conftest import (
 )
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
+from pegelonline_mcp.resources import CHART_UI_URI
 from pegelonline_mcp.tools_measurements import MAX_RAW_SLOTS, MAX_RESULT_CHARS
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
@@ -44,7 +46,7 @@ START = (NOW - timedelta(days=2)).astimezone(BERLIN)
 END = START + timedelta(hours=6)
 
 # Tools that take a time window, by hours or by start and end
-WINDOW_TOOLS = ["get_measurement_history", "get_measurements_chart"]
+WINDOW_TOOLS = ["get_measurement_history", "get_measurements_chart", "show_measurements_chart"]
 # Window arguments and the query parameters the API receives for them:
 # hours counts back from the API's now, a window is sent as given
 WINDOW_PARAMS = [
@@ -57,6 +59,8 @@ WINDOW_PARAMS = [
     ),
 ]
 CHART_SIZE = {"width": "900", "height": "400"}
+# The window the chart UI passes to get_chart_values
+CHART_WINDOW = {"start": START.isoformat(), "end": END.isoformat()}
 
 
 @pytest.fixture
@@ -102,6 +106,12 @@ def mock_history(respx_mock, measurements: list[dict[str, Any]], **timeseries: A
         json=load_fixture("timeseries_koeln_w") | timeseries
     )
     respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
+
+
+def mock_chart(respx_mock, measurements: list[dict[str, Any]]):
+    """Mock Köln with its timeseries and W ``measurements``; returns the latter's route."""
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+    return respx_mock.get(MEASUREMENTS_URL).respond(json=measurements)
 
 
 async def test_search_stations(client, respx_mock, snapshot_json):
@@ -844,6 +854,147 @@ async def test_get_measurements_chart_upstream_errors(client, respx_mock, respon
         await client.call_tool("get_measurements_chart", KOELN_W)
 
 
+async def test_show_measurements_chart(client, respx_mock, snapshot_json):
+    route = mock_chart(respx_mock, load_fixture("measurements_w"))
+
+    result = await client.call_tool("show_measurements_chart", KOELN_W)
+
+    data = result.structured_content
+    # The last 24 hours by default, requested by both ends, which the chart
+    # UI passes on to get_chart_values
+    assert dict(route.calls.last.request.url.params) == {
+        "start": data["start"], "end": data["end"]
+    }
+    start, end = datetime.fromisoformat(data["start"]), datetime.fromisoformat(data["end"])
+    assert end - start == timedelta(hours=24)
+    # The model reads only the text, so it carries the summary as well
+    assert json.loads(result.content[0].text) == data
+    assert {k: v for k, v in data.items() if k not in ("start", "end")} == snapshot_json
+
+
+@pytest.mark.parametrize("window", [{}, {"start": START.isoformat()}], ids=["hours", "start"])
+async def test_show_measurements_chart_window_ends_now(client, respx_mock, window):
+    mock_chart(respx_mock, [])
+
+    result = await client.call_tool("show_measurements_chart", {**KOELN_W, **window})
+
+    end = datetime.fromisoformat(result.structured_content["end"])
+    assert NOW <= end <= datetime.now(UTC)
+
+
+async def test_show_measurements_chart_window_in_utc(client, respx_mock):
+    mock_chart(respx_mock, [])
+
+    result = await client.call_tool("show_measurements_chart", {**KOELN_W, **CHART_WINDOW})
+
+    # START and END are in German time
+    data = result.structured_content
+    assert (data["start"], data["end"]) == (
+        START.astimezone(UTC).isoformat(), END.astimezone(UTC).isoformat()
+    )
+
+
+async def test_show_measurements_chart_unknown_parameter(client, respx_mock):
+    # Rejected before the measurements, which respx would refuse unmocked
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+
+    with pytest.raises(ToolError, match="has no parameter 'LT'; it has Q, W"):
+        await client.call_tool(
+            "show_measurements_chart", {"uuid": KOELN_UUID, "parameter": "LT"}
+        )
+
+
+async def test_get_chart_values(client, respx_mock, timeseries_w, snapshot_json):
+    route = respx_mock.get(MEASUREMENTS_URL).respond(json=load_fixture("measurements_w"))
+
+    result = await client.call_tool("get_chart_values", {**KOELN_W, **CHART_WINDOW})
+
+    assert dict(route.calls.last.request.url.params) == CHART_WINDOW
+    assert result.structured_content == snapshot_json
+    # The values go only once, in structuredContent; the text just counts them
+    assert result.content[0].text == (
+        "8 values for the chart UI; they are not meant for the model."
+    )
+
+
+async def test_get_chart_values_marks_gaps(client, respx_mock):
+    mock_history(respx_mock, series(
+        datetime(2026, 10, 6, 10, 0, tzinfo=UTC), [50.0, 50.5, None, None, 51.0]
+    ))
+
+    result = await client.call_tool("get_chart_values", {**KOELN_W, **CHART_WINDOW})
+
+    assert result.structured_content == {
+        "start": "2026-10-06T12:00:00+02:00",
+        "interval_minutes": 15,
+        "timestamps": None,
+        "values": [50, 50.5, None, None, 51],
+    }
+
+
+async def test_get_chart_values_across_change_of_time(client, respx_mock):
+    # On 25 October 2026 the clocks go back from 03:00 CEST to 02:00 CET
+    mock_history(respx_mock, series(datetime(2026, 10, 24, 23, 0, tzinfo=UTC), [48.0] * 16))
+
+    result = await client.call_tool("get_chart_values", {**KOELN_W, **CHART_WINDOW})
+
+    # The repeated hour takes four slots like any other, without gap or overlap
+    data = result.structured_content
+    assert (data["start"], data["values"]) == ("2026-10-25T01:00:00+02:00", [48] * 16)
+
+
+@pytest.mark.parametrize(
+    ("first", "timeseries", "timestamps"),
+    [
+        (
+            datetime(2026, 10, 6, 10, 0, tzinfo=UTC),
+            {"equidistance": None},
+            ["2026-10-06T12:00:00+02:00", "2026-10-06T12:30:00+02:00"],
+        ),
+        (
+            datetime(2026, 10, 6, 10, 7, tzinfo=UTC),
+            {},
+            ["2026-10-06T12:07:00+02:00", "2026-10-06T12:37:00+02:00"],
+        ),
+    ],
+    ids=["unknown-interval", "off-grid"],
+)
+async def test_get_chart_values_without_grid(
+    client, respx_mock, first, timeseries, timestamps
+):
+    mock_history(respx_mock, series(first, [48.0, None, 49.0]), **timeseries)
+
+    result = await client.call_tool("get_chart_values", {**KOELN_W, **CHART_WINDOW})
+
+    assert result.structured_content == {
+        "start": None, "interval_minutes": None, "timestamps": timestamps, "values": [48, 49]
+    }
+
+
+async def test_get_chart_values_past_the_kept_history(client, respx_mock):
+    # E.g. a chart reopened weeks later: the API returns what it still keeps,
+    # here nothing
+    mock_history(respx_mock, [])
+    window = {
+        "start": (NOW - timedelta(days=40)).isoformat(),
+        "end": (NOW - timedelta(days=33)).isoformat(),
+    }
+
+    result = await client.call_tool("get_chart_values", {**KOELN_W, **window})
+
+    assert result.structured_content == {
+        "start": None, "interval_minutes": 15, "timestamps": None, "values": []
+    }
+
+
+async def test_chart_tools_are_linked_to_the_ui(client):
+    tools = {t.name: t for t in await client.list_tools()}
+
+    assert tools["show_measurements_chart"].meta["ui"] == {"resourceUri": CHART_UI_URI}
+    # Hosts keep get_chart_values from the model; only the chart UI calls it
+    assert tools["get_chart_values"].meta["ui"] == {"visibility": ["app"]}
+
+
 async def test_upstream_404_raises_tool_error(client, respx_mock):
     respx_mock.get(STATION_URL).respond(404)
 
@@ -1007,6 +1158,13 @@ async def test_history_allows_large_results(client):
                 "summary", "resolution", "truncated", "columns", "rows",
             },
         ),
+        (
+            "show_measurements_chart",
+            {
+                "uuid", "parameter", "station", "water", "unit", "comment",
+                "interval_minutes", "start", "end", "summary",
+            },
+        ),
     ],
 )
 async def test_output_schema_describes_response(client, tool, properties):
@@ -1038,6 +1196,8 @@ async def test_tools_are_annotated_read_only(client):
         "get_recent_measurements",
         "get_measurement_history",
         "get_measurements_chart",
+        "show_measurements_chart",
+        "get_chart_values",
     }
     for tool in tools:
         assert tool.annotations.readOnlyHint is True, tool.name

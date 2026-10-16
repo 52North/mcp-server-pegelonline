@@ -1,0 +1,30 @@
+{
+  "comment": null,
+  "interval_minutes": 15,
+  "parameter": "W",
+  "station": "KÖLN",
+  "summary": {
+    "count": 8,
+    "first": {
+      "timestamp": "2026-10-06T12:00:00+02:00",
+      "value": 48
+    },
+    "last": {
+      "timestamp": "2026-10-06T13:45:00+02:00",
+      "value": 48
+    },
+    "max": {
+      "timestamp": "2026-10-06T12:00:00+02:00",
+      "value": 48
+    },
+    "mean": 48,
+    "min": {
+      "timestamp": "2026-10-06T12:00:00+02:00",
+      "value": 48
+    },
+    "missing": 0
+  },
+  "unit": "cm",
+  "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+  "water": "RHEIN"
+}

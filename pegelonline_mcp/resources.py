@@ -1,5 +1,5 @@
 """Resources: water bodies, states, agencies and catchment areas, the stations
-per state and the map UI."""
+per state, the map UI and the chart UI."""
 
 import logging
 from pathlib import Path
@@ -14,12 +14,21 @@ from pegelonline_mcp.mapping import water_name
 logger = logging.getLogger(__name__)
 
 MAP_UI_URI = "ui://pegelonline-dict/stations-map"
+CHART_UI_URI = "ui://pegelonline-dict/measurements-chart"
 
 
 def stations_map_ui() -> str:
     """Leaflet map UI rendered inline for the show_stations_map tool."""
     logger.info("stations_map_ui: serving Leaflet map resource %s", MAP_UI_URI)
     return (Path(__file__).parent / "static" / "stations_map.html").read_text(encoding="utf-8")
+
+
+def measurements_chart_ui() -> str:
+    """Chart UI rendered inline for the show_measurements_chart tool."""
+    logger.info("measurements_chart_ui: serving chart resource %s", CHART_UI_URI)
+    return (Path(__file__).parent / "static" / "measurements_chart.html").read_text(
+        encoding="utf-8"
+    )
 
 
 @cached("water-bodies")
@@ -119,6 +128,14 @@ def register(mcp: FastMCP) -> None:
             prefers_border=True,
         ),
     )(stations_map_ui)
+    mcp.resource(
+        CHART_UI_URI,
+        mime_type=UI_MIME_TYPE,
+        app=AppConfig(
+            csp=ResourceCSP(resource_domains=["https://unpkg.com"]),
+            prefers_border=True,
+        ),
+    )(measurements_chart_ui)
     mcp.resource("water-bodies://list")(list_water_bodies)
     mcp.resource("states://list")(list_states)
     mcp.resource("states://{state}/stations")(list_stations_in_state)

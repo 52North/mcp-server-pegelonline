@@ -256,3 +256,32 @@ class MeasurementHistory(HistoryRows):
     comment: str | None
     interval_minutes: int | None
     summary: HistorySummary
+
+
+class MeasurementsChart(TypedDict):
+    """Window and summary of an interactive chart; the chart UI fetches the values."""
+
+    uuid: str
+    parameter: str
+    station: str | None
+    water: str | None
+    unit: str | None
+    comment: str | None
+    interval_minutes: int | None
+    # Both ends in UTC, so the chart UI fetches exactly the summarized values
+    start: str
+    end: str
+    summary: HistorySummary
+
+
+class ChartValues(TypedDict):
+    """Values of a chart window for the chart UI, oldest first.
+
+    On the grid, values[i] lies i × interval_minutes after start and None
+    marks a gap; off the grid, timestamps holds the time of each value.
+    """
+
+    start: str | None
+    interval_minutes: int | None
+    timestamps: list[str] | None
+    values: list[float | None]

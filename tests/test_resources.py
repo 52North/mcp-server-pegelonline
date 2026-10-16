@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from conftest import SEARCH_URL, WATERS_URL, all_stations, load_fixture
-from pegelonline_mcp.resources import MAP_UI_URI
+from pegelonline_mcp.resources import CHART_UI_URI, MAP_UI_URI
 
 
 async def read_text(client, uri: str) -> str:
@@ -150,6 +150,20 @@ async def test_stations_map_ui(client):
 
     assert "<html" in text.lower()
     assert "leaflet" in text.lower()
+
+
+async def test_measurements_chart_ui(client):
+    text = await read_text(client, CHART_UI_URI)
+
+    assert "<html" in text.lower()
+
+
+async def test_measurements_chart_ui_may_load_from_unpkg_only(client):
+    resources = {str(r.uri): r for r in await client.list_resources()}
+
+    assert resources[CHART_UI_URI].meta["ui"]["csp"] == {
+        "resourceDomains": ["https://unpkg.com"]
+    }
 
 
 class ExternalAssets(HTMLParser):

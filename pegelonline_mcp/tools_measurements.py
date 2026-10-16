@@ -6,7 +6,9 @@ from datetime import UTC, datetime, timedelta
 from statistics import fmean
 
 from fastmcp import FastMCP
+from fastmcp.apps import AppConfig
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from pydantic import AwareDatetime
 
@@ -23,6 +25,7 @@ from pegelonline_mcp.mapping import (
 )
 from pegelonline_mcp.models import (
     CharacteristicValues,
+    ChartValues,
     ComparedStation,
     HistoryRows,
     HistorySummary,
@@ -30,9 +33,11 @@ from pegelonline_mcp.models import (
     LatestMeasurements,
     Measurement,
     MeasurementHistory,
+    MeasurementsChart,
     RecentMeasurements,
     StationComparison,
 )
+from pegelonline_mcp.resources import CHART_UI_URI
 
 logger = logging.getLogger(__name__)
 
@@ -301,6 +306,34 @@ def _window_start(
     return start
 
 
+def _absolute_window(
+    hours: float | None, start: datetime | None, end: datetime | None
+) -> tuple[datetime, datetime]:
+    """Start and end of the window that _window_start checks, both in UTC.
+
+    The chart UI fetches its values for these ends later, so they match the
+    summary instead of moving with the clock.
+    """
+    since = _window_start(hours, start, end)
+    now = datetime.now(UTC).replace(microsecond=0)
+    if isinstance(since, timedelta):
+        return now - since, now
+    return since.astimezone(UTC), (end or now).astimezone(UTC)
+
+
+def _station_timeseries(station: dict, parameter: str) -> dict:
+    """The timeseries of ``parameter`` among a station's timeseries."""
+    timeseries = normalize_timeseries(station)
+    for ts in timeseries:
+        if ts.get("shortname") == parameter:
+            return ts
+    available = ", ".join(sorted(str(ts.get("shortname")) for ts in timeseries))
+    raise ToolError(
+        f"Station {station.get('uuid')} has no parameter {parameter!r}; "
+        f"it has {available or 'none'}."
+    )
+
+
 def _points(measurements: list[Measurement]) -> list[Point]:
     """Values with parsed timestamps; measurements without a value are skipped."""
     return [
@@ -424,6 +457,31 @@ def _summary(points: list[Point], grid: int | None) -> HistorySummary:
         "min": _measurement(min(points, key=lambda p: p[1])),
         "max": _measurement(max(points, key=lambda p: p[1])),
         "mean": _mean([value for _, value in points]),
+    }
+
+
+def _chart_values(points: list[Point], grid: int | None) -> ChartValues:
+    """Values for the chart UI: a flat list on the grid, else with timestamps."""
+    if grid is None:
+        return {
+            "start": None,
+            "interval_minutes": None,
+            "timestamps": [t.isoformat() for t, _ in points],
+            "values": [_compact(value) for _, value in points],
+        }
+    values: list[float | None] = []
+    if points:
+        # Aware datetimes subtract in absolute time, so the slots stay even
+        # across a change of daylight saving time
+        first, step = points[0][0], timedelta(minutes=grid)
+        values = [None] * ((points[-1][0] - first) // step + 1)
+        for t, value in points:
+            values[(t - first) // step] = _compact(value)
+    return {
+        "start": points[0][0].isoformat() if points else None,
+        "interval_minutes": grid,
+        "timestamps": None,
+        "values": values,
     }
 
 
@@ -557,6 +615,111 @@ async def get_measurements_chart(
     return Image(data=png, format="png")
 
 
+async def show_measurements_chart(
+    uuid: str,
+    parameter: str,
+    hours: Hours | None = None,
+    start: AwareDatetime | None = None,
+    end: AwareDatetime | None = None,
+) -> MeasurementsChart:
+    """
+    Show the user an interactive chart of one parameter of a station over a
+    time span: by default the last 24 hours, at most 35 days back. In
+    MCP-Apps-capable clients the chart is rendered inline and fetches the
+    values itself; the user can zoom and read off values. You receive only
+    the summary, so the span costs the same few hundred tokens whatever its
+    length. In clients without MCP Apps (e.g., Claude Code) the user sees
+    no chart.
+
+    To see the course yourself, call get_measurements_chart; for exact
+    values and timestamps, get_measurement_history.
+
+    The response names the station and its water body, the unit and the
+    timeseries comment, the interval in minutes, the window as start and end
+    in UTC, and the summary of all values in it, as get_measurement_history
+    reports it.
+
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+        parameter: The shortname of the parameter (e.g., 'W' for water level, 'Q' for flow).
+        hours: The last N hours (e.g., 168 for a week); default 24 unless
+            start is given.
+        start: Start of a time window instead of hours, with UTC offset:
+            e.g., '2026-09-20T00:00+02:00' in summer, '2026-12-01T00:00+01:00'
+            in winter.
+        end: End of the window, with UTC offset (default: now); only with
+            start. Both ends are included, at most 840 hours apart.
+    """
+    logger.info(
+        "show_measurements_chart: uuid=%s parameter=%s hours=%s start=%s end=%s",
+        uuid, parameter, hours, start, end,
+    )
+    window_start, window_end = _absolute_window(hours, start, end)
+    station = await client.fetch_station(uuid)
+    timeseries = _station_timeseries(station, parameter)
+    measurements = await client.fetch_measurements_since(
+        uuid, parameter, window_start, window_end
+    )
+    points = _points(measurements)
+    interval = timeseries.get("equidistance")
+    logger.info(
+        "show_measurements_chart: uuid=%s parameter=%s -> %d values",
+        uuid, parameter, len(points),
+    )
+
+    return {
+        "uuid": uuid,
+        "parameter": parameter,
+        "station": station.get("longname"),
+        "water": water_name(station),
+        "unit": timeseries.get("unit"),
+        "comment": timeseries_comment(timeseries),
+        "interval_minutes": interval,
+        "start": window_start.isoformat(),
+        "end": window_end.isoformat(),
+        "summary": _summary(points, _grid(interval, points)),
+    }
+
+
+async def get_chart_values(
+    uuid: str, parameter: str, start: AwareDatetime, end: AwareDatetime
+) -> ToolResult:
+    """
+    Only for the chart UI of show_measurements_chart, not for the model: all
+    values of one parameter of a station in a window, oldest first. For
+    values to read or quote, call get_measurement_history instead.
+
+    On the grid of the interval, values[i] lies i × interval_minutes after
+    start and null marks a gap; off the grid, timestamps holds the time of
+    each value.
+
+    Args:
+        uuid: The unique identifier (UUID) of the station.
+        parameter: The shortname of the parameter.
+        start: Start of the window, with UTC offset.
+        end: End of the window, with UTC offset.
+    """
+    logger.info(
+        "get_chart_values: uuid=%s parameter=%s start=%s end=%s",
+        uuid, parameter, start, end,
+    )
+    # No check how far back start lies: a chart reopened later shows what
+    # the API still keeps
+    timeseries = await client.fetch_timeseries(uuid, parameter)
+    points = _points(await client.fetch_measurements_since(uuid, parameter, start, end))
+    values = _chart_values(points, _grid(timeseries.get("equidistance"), points))
+    logger.info(
+        "get_chart_values: uuid=%s parameter=%s -> %d values in %d slots",
+        uuid, parameter, len(points), len(values["values"]),
+    )
+    # The values go only into structuredContent: the text would send them
+    # a second time, and the model reads only the text
+    return ToolResult(
+        content=f"{len(points)} values for the chart UI; they are not meant for the model.",
+        structured_content=values,
+    )
+
+
 def register(mcp: FastMCP) -> None:
     """Register the measurement tools on the server."""
     mcp.tool(get_latest_measurements, annotations=READ_ONLY)
@@ -570,3 +733,14 @@ def register(mcp: FastMCP) -> None:
         meta={"anthropic/maxResultSizeChars": MAX_RESULT_CHARS},
     )
     mcp.tool(get_measurements_chart, annotations=READ_ONLY)
+    mcp.tool(
+        show_measurements_chart,
+        app=AppConfig(resource_uri=CHART_UI_URI),
+        annotations=READ_ONLY,
+    )
+    # Hidden from the model: its values are meant for the chart UI only
+    mcp.tool(
+        get_chart_values,
+        app=AppConfig(visibility=["app"]),
+        annotations=READ_ONLY,
+    )
