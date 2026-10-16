@@ -4,8 +4,504 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pegelonline measurements chart</title>
+<link rel="stylesheet" href="https://unpkg.com/uplot@1.6.32/dist/uPlot.min.css"
+      integrity="sha256-32MMao1vjur/JktQ9zzlsRT2Rv/ZoLt08EmwoAE1+gQ=" crossorigin="">
+<script src="https://unpkg.com/uplot@1.6.32/dist/uPlot.iife.min.js"
+        integrity="sha256-GcjUxq2Ikpp59K5J1vcWFWbf0Lo9FcxJXpdPeH63jx8=" crossorigin=""></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --select: rgba(11, 11, 11, 0.07);
+    --series: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface: #1a1a19;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --select: rgba(255, 255, 255, 0.08);
+      --series: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --select: rgba(255, 255, 255, 0.08);
+    --series: #3987e5;
+  }
+  html, body { margin: 0; background: var(--surface); color: var(--ink); }
+  body { padding: 12px 14px 10px; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1 { margin: 0; font-size: 15px; font-weight: 600; }
+  #subtitle { margin: 2px 0 8px; color: var(--ink-2); }
+  #stats { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-bottom: 8px; }
+  .stat-label { color: var(--ink-2); font-size: 12px; }
+  .stat-value { font-weight: 600; }
+  .stat-time { color: var(--ink-2); font-size: 12px; }
+  #comment { margin-bottom: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; }
+  #message { padding: 24px 0; color: var(--ink-2); }
+  .uplot { font-family: inherit; }
+  .uplot .u-legend { font-size: 12px; color: var(--ink); }
+  .uplot .u-legend .u-value { font-variant-numeric: tabular-nums; }
+  .uplot .u-select { background: var(--select); }
+  #hint, footer { color: var(--muted); font-size: 12px; }
+  footer { margin-top: 4px; }
+  [hidden] { display: none !important; }
+</style>
 </head>
 <body>
-<p>The interactive chart is not available yet.</p>
+<h1 id="title"></h1>
+<div id="subtitle"></div>
+<div id="stats"></div>
+<div id="comment" hidden></div>
+<div id="message"></div>
+<div id="chart"></div>
+<div id="hint" hidden></div>
+<footer id="source"></footer>
+<script>
+  "use strict";
+
+  const CHART_HEIGHT_PX = 320;
+  const REQUEST_TIMEOUT_MS = 60000;
+  // The gauges report legal German time, whatever the viewer's time zone
+  const TIME_ZONE = "Europe/Berlin";
+  const PROTOCOL_VERSION = "2026-01-26";
+  // Characteristic values follow the measured series in the legend
+  const FIRST_LINE = 2;
+
+  const TEXT = {
+    en: {
+      waiting: "Waiting for the measurements…",
+      loading: "Loading values…",
+      time: "Time",
+      latest: "Latest",
+      min: "Min",
+      max: "Max",
+      noValues: "No values in this period. The API keeps measurements for a little over 31 days.",
+      noServerTools: "This client does not let the chart load its values.",
+      failed: "Could not load the values: ",
+      timeout: "no answer within 60 seconds",
+      cancelled: "The tool call was cancelled.",
+      hint: "Drag to zoom, double-click to reset. Click a legend entry to show or hide it.",
+      source: "Data: Pegelonline (WSV); raw data, unverified.",
+    },
+    de: {
+      waiting: "Warte auf die Messwerte…",
+      loading: "Lade Werte…",
+      time: "Zeit",
+      latest: "Letzter Wert",
+      min: "Min",
+      max: "Max",
+      noValues: "Keine Werte in diesem Zeitraum. Die API hält Messwerte gut 31 Tage.",
+      noServerTools: "Dieser Client lässt das Diagramm keine Werte laden.",
+      failed: "Die Werte konnten nicht geladen werden: ",
+      timeout: "keine Antwort innerhalb von 60 Sekunden",
+      cancelled: "Der Tool-Aufruf wurde abgebrochen.",
+      hint: "Ziehen zum Zoomen, Doppelklick setzt zurück. Ein Klick auf einen Legendeneintrag blendet ihn ein oder aus.",
+      source: "Daten: Pegelonline (WSV); Rohdaten, ungeprüft.",
+    },
+  };
+
+  const state = {
+    locale: validLocale(navigator.language),
+    serverTools: null, // unknown until the host answers ui/initialize
+    chart: null, // structuredContent of show_measurements_chart
+    loading: null, // the chart whose values are being fetched
+    values: null, // structuredContent of get_chart_values
+    lines: [], // characteristic values in the unit of the series
+    shown: null, // short names of the shown lines, set on the first draw
+    message: "waiting",
+  };
+  let plot = null;
+
+  const $ = id => document.getElementById(id);
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function validLocale(locale) {
+    try {
+      return Intl.getCanonicalLocales(locale)[0] || "en";
+    } catch {
+      return "en";
+    }
+  }
+
+  function text() {
+    return TEXT[state.locale.toLowerCase().startsWith("de") ? "de" : "en"];
+  }
+
+  // Intl formatters are costly to create and the legend formats on every move
+  const formatters = new Map();
+  function formatter(kind, options) {
+    const key = `${state.locale} ${kind}`;
+    if (!formatters.has(key)) {
+      const Format = kind === "number" ? Intl.NumberFormat : Intl.DateTimeFormat;
+      formatters.set(key, new Format(state.locale, options));
+    }
+    return formatters.get(key);
+  }
+
+  function formatNumber(value) {
+    return value == null ? "–" : formatter("number", { maximumFractionDigits: 3 }).format(value);
+  }
+
+  function formatValue(value) {
+    const unit = state.chart && state.chart.unit;
+    return value == null ? "–" : unit ? `${formatNumber(value)} ${unit}` : formatNumber(value);
+  }
+
+  function formatDateTime(date) {
+    return formatter("datetime", { timeZone: TIME_ZONE, dateStyle: "medium", timeStyle: "short" })
+      .format(date);
+  }
+
+  // --- Header, messages and static texts ---
+
+  function renderTexts() {
+    document.documentElement.lang = text() === TEXT.de ? "de" : "en";
+    $("hint").textContent = text().hint;
+    $("source").textContent = text().source;
+    $("message").textContent = state.message ? text()[state.message] ?? state.message : "";
+    $("message").hidden = !state.message;
+    renderHeader();
+  }
+
+  function renderHeader() {
+    const chart = state.chart;
+    if (!chart) return;
+    $("title").textContent = [chart.station, chart.water].filter(Boolean).join(" · ") || chart.uuid;
+    const series = chart.unit ? `${chart.parameter} in ${chart.unit}` : chart.parameter;
+    $("subtitle").textContent =
+      `${series} · ${formatDateTime(new Date(chart.start))} – ${formatDateTime(new Date(chart.end))}`;
+
+    const summary = chart.summary || {};
+    const stats = $("stats");
+    stats.replaceChildren();
+    for (const [label, measurement] of [
+      [text().latest, summary.last], [text().min, summary.min], [text().max, summary.max],
+    ]) {
+      if (!measurement) continue;
+      const stat = document.createElement("div");
+      for (const [className, content] of [
+        ["stat-label", label],
+        ["stat-value", formatValue(measurement.value)],
+        ["stat-time", formatDateTime(new Date(measurement.timestamp))],
+      ]) {
+        const part = document.createElement("div");
+        part.className = className;
+        part.textContent = content;
+        stat.appendChild(part);
+      }
+      stats.appendChild(stat);
+    }
+
+    $("comment").textContent = chart.comment || "";
+    $("comment").hidden = !chart.comment;
+  }
+
+  // Shows a message in place of the chart; a key of TEXT or a literal text
+  function setMessage(message) {
+    state.message = message;
+    if (message) destroyPlot();
+    renderTexts();
+  }
+
+  // --- Chart ---
+
+  function destroyPlot() {
+    if (plot) plot.destroy();
+    plot = null;
+    $("hint").hidden = true;
+  }
+
+  // Time of each value in seconds since the epoch
+  function xValues(values) {
+    if (values.timestamps) return values.timestamps.map(t => Date.parse(t) / 1000);
+    const start = Date.parse(values.start) / 1000;
+    const step = values.interval_minutes * 60;
+    return values.values.map((_, i) => start + i * step);
+  }
+
+  function yRange(min, max) {
+    return uPlot.rangeNum(min, max, 0.1, true);
+  }
+
+  // Ticks on whole days show the date; finer ticks the time, and the date where it changes
+  function timeLabels(u, splits, axisIdx, foundSpace, foundIncr) {
+    const day = formatter("day", { timeZone: TIME_ZONE, day: "numeric", month: "numeric" });
+    const time = formatter("time", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+    let previousDay = null;
+    return splits.map(ts => {
+      const date = new Date(ts * 1000);
+      const dayLabel = day.format(date);
+      if (foundIncr >= 24 * 3600) return dayLabel;
+      const label = dayLabel === previousDay ? time.format(date) : `${time.format(date)}\n${dayLabel}`;
+      previousDay = dayLabel;
+      return label;
+    });
+  }
+
+  // Short names on the left end of the shown lines, skipping one too close to the last
+  function drawLineLabels(u) {
+    const ratio = uPlot.pxRatio;
+    const { ctx, bbox } = u;
+    const labels = state.lines
+      .map((line, i) => ({ line, series: u.series[FIRST_LINE + i] }))
+      .filter(({ series }) => series.show)
+      .map(({ line }) => ({ name: line.shortname, y: u.valToPos(line.value, "y", true) }))
+      .filter(({ y }) => y >= bbox.top && y <= bbox.top + bbox.height)
+      .sort((a, b) => a.y - b.y);
+    ctx.save();
+    ctx.font = `${Math.round(11 * ratio)}px system-ui, sans-serif`;
+    ctx.fillStyle = css("--ink-2");
+    // uPlot leaves the alignment of its last axis on the context
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    let lastY = -Infinity;
+    for (const { name, y } of labels) {
+      if (y - lastY < 12 * ratio) continue;
+      ctx.fillText(name, bbox.left + 4 * ratio, y - 2 * ratio);
+      lastY = y;
+    }
+    ctx.restore();
+  }
+
+  function rememberShown(u, seriesIdx, opts) {
+    if (seriesIdx < FIRST_LINE || !opts || !("show" in opts)) return;
+    const name = state.lines[seriesIdx - FIRST_LINE].shortname;
+    if (opts.show) state.shown.add(name);
+    else state.shown.delete(name);
+  }
+
+  // (Re)builds the chart from the fetched values, e.g. after a change of theme
+  function draw() {
+    const values = state.values;
+    if (!values) return;
+    const ys = values.values;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const v of ys) {
+      if (v == null) continue;
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    }
+    if (min > max) {
+      setMessage("noValues");
+      return;
+    }
+    const xs = xValues(values);
+    if (state.shown === null) {
+      // At first only the lines within the range of the measured curve, so a
+      // far-off record level does not flatten it
+      const [low, high] = yRange(min, max);
+      state.shown = new Set(
+        state.lines.filter(l => l.value >= low && l.value <= high).map(l => l.shortname)
+      );
+    }
+
+    state.message = null;
+    destroyPlot();
+    renderTexts();
+    // A line holds its value at every x: uPlot draws only the points of the
+    // zoomed window, so a line of two end points would vanish on zoom
+    const data = [xs, ys, ...state.lines.map(line => new Array(xs.length).fill(line.value))];
+    const axis = {
+      stroke: css("--ink-2"),
+      grid: { stroke: css("--grid"), width: 1 },
+      ticks: { stroke: css("--axis"), width: 1 },
+    };
+    plot = new uPlot({
+      width: $("chart").clientWidth,
+      height: CHART_HEIGHT_PX,
+      tzDate: ts => uPlot.tzDate(new Date(ts * 1000), TIME_ZONE),
+      cursor: { y: false },
+      scales: { x: { time: true }, y: { range: (u, min, max) => yRange(min, max) } },
+      axes: [
+        { ...axis, values: timeLabels },
+        {
+          ...axis,
+          label: state.chart.unit || "",
+          values: (u, splits) => splits.map(formatNumber),
+          size: (u, labels) => 16 + 7 * Math.max(4, ...(labels || []).map(l => l.length)),
+        },
+      ],
+      series: [
+        { label: text().time, value: (u, ts) => ts == null ? "–" : formatDateTime(new Date(ts * 1000)) },
+        {
+          label: state.chart.parameter,
+          stroke: css("--series"),
+          width: 2,
+          value: (u, v) => formatValue(v),
+        },
+        ...state.lines.map(line => ({
+          label: line.shortname,
+          stroke: css("--ink-2"),
+          width: 1,
+          dash: [6, 4],
+          show: state.shown.has(line.shortname),
+          points: { show: false },
+          value: () => formatValue(line.value),
+        })),
+      ],
+      hooks: { draw: [drawLineLabels], setSeries: [rememberShown] },
+    }, data, $("chart"));
+    $("hint").hidden = false;
+  }
+
+  // --- Values from the server ---
+
+  function toolText(result) {
+    return ((result && result.content) || [])
+      .filter(c => c.type === "text").map(c => c.text).join(" ");
+  }
+
+  async function callTool(name, args) {
+    const result = await request("tools/call", { name, arguments: args });
+    if (result && result.isError) throw new Error(toolText(result));
+    return result && result.structuredContent;
+  }
+
+  // Characteristic values that can be drawn in the unit of the series
+  function usableLines(result, unit) {
+    return ((result && result.characteristic_values) || []).filter(cv =>
+      typeof cv.shortname === "string" && typeof cv.value === "number" &&
+      (!cv.unit || !unit || cv.unit === unit)
+    );
+  }
+
+  async function loadValues() {
+    const chart = state.chart;
+    if (!chart || state.serverTools === null || state.loading === chart) return;
+    if (!state.serverTools) {
+      setMessage("noServerTools");
+      return;
+    }
+    state.loading = chart;
+    setMessage("loading");
+    const station = { uuid: chart.uuid, parameter: chart.parameter };
+    // The window of the tool result, not hours: the curve then matches its summary
+    const [values, lines] = await Promise.allSettled([
+      callTool("get_chart_values", { ...station, start: chart.start, end: chart.end }),
+      callTool("get_characteristic_values", station),
+    ]);
+    if (state.chart !== chart) return; // a newer tool result took over
+    if (values.status === "rejected") {
+      setMessage(text().failed + values.reason.message);
+      return;
+    }
+    state.values = values.value;
+    // Without characteristic values the chart still shows the measurements
+    state.lines = lines.status === "fulfilled" ? usableLines(lines.value, chart.unit) : [];
+    draw();
+  }
+
+  function onToolResult(result) {
+    const chart = result && result.structuredContent;
+    if (result && result.isError) {
+      setMessage(toolText(result));
+      return;
+    }
+    if (!chart || !chart.start || !chart.end) return;
+    Object.assign(state, { chart, values: null, lines: [], shown: null });
+    renderHeader();
+    loadValues();
+  }
+
+  function applyHostContext(context) {
+    if (!context) return;
+    if (context.theme) document.documentElement.dataset.theme = context.theme;
+    if (context.locale) state.locale = validLocale(context.locale);
+    if (context.theme || context.locale) {
+      renderTexts();
+      if (plot) draw();
+    }
+  }
+
+  // --- MCP Apps bridge (JSON-RPC 2.0 over postMessage) ---
+
+  let nextId = 1;
+  const pending = new Map(); // request id -> settle(response)
+
+  function send(msg) {
+    window.parent.postMessage(msg, "*");
+  }
+
+  function request(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(text().timeout));
+      }, REQUEST_TIMEOUT_MS);
+      pending.set(id, msg => {
+        clearTimeout(timer);
+        if (msg.error) reject(new Error(msg.error.message || `JSON-RPC error ${msg.error.code}`));
+        else resolve(msg.result);
+      });
+      send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  window.addEventListener("message", event => {
+    // Only the host may drive the chart, not other frames on the page
+    if (event.source !== window.parent) return;
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+
+    if (msg.method === undefined) {
+      const settle = pending.get(msg.id);
+      pending.delete(msg.id);
+      if (settle) settle(msg);
+      return;
+    }
+    // A request of the host, e.g. ui/resource-teardown or ping
+    if (msg.id !== undefined) {
+      send({ jsonrpc: "2.0", id: msg.id, result: {} });
+      return;
+    }
+    if (msg.method === "ui/notifications/tool-result") onToolResult(msg.params);
+    if (msg.method === "ui/notifications/host-context-changed") applyHostContext(msg.params);
+    if (msg.method === "ui/notifications/tool-cancelled") setMessage("cancelled");
+  });
+
+  // The chart follows the width of the frame; the host follows the height of the page
+  let lastWidth = null;
+  new ResizeObserver(() => {
+    const width = $("chart").clientWidth;
+    if (plot && width !== lastWidth) plot.setSize({ width, height: CHART_HEIGHT_PX });
+    lastWidth = width;
+    send({
+      jsonrpc: "2.0",
+      method: "ui/notifications/size-changed",
+      params: { height: Math.ceil(document.documentElement.scrollHeight) },
+    });
+  }).observe(document.body);
+
+  renderTexts();
+  request("ui/initialize", {
+    appInfo: { name: "pegelonline-measurements-chart", version: "1.0.0" },
+    appCapabilities: {},
+    protocolVersion: PROTOCOL_VERSION,
+  }).then(result => {
+    state.serverTools = Boolean(result && result.hostCapabilities && result.hostCapabilities.serverTools);
+    applyHostContext(result && result.hostContext);
+    send({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+    loadValues();
+  }, error => setMessage(text().failed + error.message));
+</script>
 </body>
 </html>

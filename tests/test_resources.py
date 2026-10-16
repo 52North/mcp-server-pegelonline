@@ -156,6 +156,7 @@ async def test_measurements_chart_ui(client):
     text = await read_text(client, CHART_UI_URI)
 
     assert "<html" in text.lower()
+    assert "uplot" in text.lower()
 
 
 async def test_measurements_chart_ui_may_load_from_unpkg_only(client):
@@ -183,14 +184,31 @@ class ExternalAssets(HTMLParser):
             self.assets.append(attributes)
 
 
-async def test_stations_map_external_assets_are_pinned(client):
-    # Subresource integrity: the browser refuses a CDN file whose hash differs
+async def external_assets(client, uri: str) -> list[dict[str, str | None]]:
     parser = ExternalAssets()
-    parser.feed(await read_text(client, MAP_UI_URI))
+    parser.feed(await read_text(client, uri))
+    return parser.assets
 
-    assert parser.assets
-    for asset in parser.assets:
+
+@pytest.mark.parametrize("uri", [MAP_UI_URI, CHART_UI_URI])
+async def test_ui_external_assets_are_pinned(client, uri):
+    # Subresource integrity: the browser refuses a CDN file whose hash differs
+    assets = await external_assets(client, uri)
+
+    assert assets
+    for asset in assets:
         assert (asset.get("integrity") or "").startswith(
             ("sha256-", "sha384-", "sha512-")
         ), asset
         assert "crossorigin" in asset, asset
+
+
+@pytest.mark.parametrize("uri", [MAP_UI_URI, CHART_UI_URI])
+async def test_ui_assets_come_from_csp_domains(client, uri):
+    # The host's iframe CSP blocks every other origin
+    resources = {str(r.uri): r for r in await client.list_resources()}
+    domains = resources[uri].meta["ui"]["csp"]["resourceDomains"]
+
+    for asset in await external_assets(client, uri):
+        url = asset.get("src") or asset.get("href") or ""
+        assert any(url.startswith(f"{domain}/") for domain in domains), url
