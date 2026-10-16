@@ -184,6 +184,30 @@ class CharacteristicValues(TypedDict):
     characteristic_values: list[CharacteristicValue]
 
 
+class ComparedStation(TypedDict):
+    """Current measurement of one parameter at one of the compared stations."""
+
+    uuid: str | None
+    station: str | None
+    water: str | None
+    km: float | None
+    unit: str | None
+    gaugeZero: GaugeZero | None
+    comment: str | None
+    current: CurrentMeasurement | None
+    # Short name to value, e.g. {"MNW": 114.0, "MW": 297.0}
+    characteristic_values: dict[str, float | None]
+
+
+class StationComparison(TypedDict):
+    """Current measurements of one parameter at several stations."""
+
+    parameter: str
+    stations: list[ComparedStation]
+    # Requested ids the API did not return
+    not_found: list[str]
+
+
 class Measurement(TypedDict):
     """Single measurement as the official API returns it."""
 

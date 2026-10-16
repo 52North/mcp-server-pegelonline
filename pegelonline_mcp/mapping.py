@@ -1,6 +1,11 @@
 """Mapping helpers that turn upstream station JSON into tool responses."""
 
-from pegelonline_mcp.models import CharacteristicValue, ParameterInfo, StationSummary
+from pegelonline_mcp.models import (
+    CharacteristicValue,
+    CurrentMeasurement,
+    ParameterInfo,
+    StationSummary,
+)
 
 
 def normalize_timeseries(station: dict) -> list[dict]:
@@ -72,6 +77,19 @@ def timeseries_comment(ts: dict) -> str | None:
     if not isinstance(comment, dict):
         return None
     return comment.get("longDescription") or comment.get("shortDescription")
+
+
+def current_measurement(ts: dict) -> CurrentMeasurement | None:
+    """Current measurement of a timeseries with its two states, or None."""
+    curr = ts.get("currentMeasurement")
+    if not isinstance(curr, dict) or not curr:
+        return None
+    return {
+        "timestamp": curr.get("timestamp"),
+        "value": curr.get("value"),
+        "state_mnw_mhw": curr.get("stateMnwMhw"),
+        "state_nsw_hsw": curr.get("stateNswHsw"),
+    }
 
 
 def characteristic_value(cv: dict) -> CharacteristicValue:

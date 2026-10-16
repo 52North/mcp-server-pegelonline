@@ -15,6 +15,7 @@ Pegelonline REST API.
 - **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
   the latest values, `get_measurement_history` any span of the last 31 days as
   compact rows or hourly and daily summaries; all with unit and timeseries comment.
+  `compare_stations` returns one parameter's current value at up to 30 stations.
 - **Characteristic values**: `get_characteristic_values` returns a water level's
   reference values (MNW, MW, MHW, HSW, record low and high, tidal values) with the
   current value, so a reading can be told high or low.
@@ -238,6 +239,23 @@ values (HSW, flood marks), `timespan_start`/`timespan_end` for statistics (MNW,
 MW, MHW) or `occurrences` for extremes (NNW, HHW; dates or only years). They
 come in the API's order, since not all are water levels: TuGLW is a fairway
 depth, and on canals OBW and UBW are heights in `m` while W is in `m+NN`.
+
+### `compare_stations`
+
+Returns the current value of one parameter (`parameter` defaults to `W`) at up to
+30 stations by `uuids`, from a single request to the official API, which accepts
+no more ids at once. Each station comes with its name, water body, river
+kilometer, unit, gauge zero, timeseries comment, the current value with both
+states, and its characteristic values as short name and value (e.g.,
+`{"MNW": 114.0, "MW": 297.0, "MHW": 725.0}`); `get_characteristic_values` has
+their long names, periods and dates.
+
+Water levels refer to each station's own gauge zero, so the W values of
+different stations are not comparable directly; the states, the characteristic
+values and the absolute height (gauge zero + W / 100) are. The stations come in
+the requested order. The API leaves out unknown stations and stations without
+the parameter without an error; `not_found` lists their UUIDs. 30 stations on
+the Elbe take about 13 000 characters.
 
 ### `get_recent_measurements`
 

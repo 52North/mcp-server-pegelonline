@@ -21,6 +21,7 @@ from conftest import (
     MEASUREMENTS_URL,
     SEARCH_URL,
     STATION_URL,
+    STATIONS_URL,
     TIMESERIES_URL,
     all_stations,
     fake_measurements_api,
@@ -33,6 +34,8 @@ from pegelonline_mcp.tools_measurements import MAX_RAW_SLOTS, MAX_RESULT_CHARS
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
 KOELN_W = {"uuid": KOELN_UUID, "parameter": "W"}
+BONN_UUID = "593647aa-9fea-43ec-a7d6-6476a76ae868"
+ALTENGAMME_UUID = "2ee12b9a-f7fd-4856-82b9-6bdd850c2bba"
 
 BERLIN = ZoneInfo("Europe/Berlin")
 # A time window may start at most 35 days back, so windows follow the clock
@@ -398,6 +401,104 @@ async def test_get_characteristic_values_tolerates_missing_fields(client, respx_
     for cv in data["characteristic_values"]:
         for key in ("longname", "unit", "value"):
             assert cv[key] is None, key
+
+
+async def test_compare_stations(client, respx_mock, snapshot_json):
+    route = respx_mock.get(STATIONS_URL).respond(json=load_fixture("stations_compare_w"))
+
+    result = await client.call_tool(
+        "compare_stations", {"uuids": [KOELN_UUID, BONN_UUID, ALTENGAMME_UUID]}
+    )
+
+    # One request for all stations, with only the requested timeseries
+    assert route.call_count == 1
+    assert dict(route.calls.last.request.url.params) == {
+        "ids": f"{KOELN_UUID},{BONN_UUID},{ALTENGAMME_UUID}",
+        "timeseries": "W",
+        "includeTimeseries": "true",
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+    assert result.structured_content == snapshot_json
+
+
+async def test_compare_stations_keeps_requested_order(client, respx_mock):
+    # The API returns the stations in its own order: Altengamme, Bonn, Köln
+    route = respx_mock.get(STATIONS_URL).respond(json=load_fixture("stations_compare_w"))
+
+    result = await client.call_tool(
+        "compare_stations",
+        {"uuids": [BONN_UUID, KOELN_UUID.upper(), f" {ALTENGAMME_UUID}", BONN_UUID]},
+    )
+
+    data = result.structured_content
+    assert [s["station"] for s in data["stations"]] == ["BONN", "KÖLN", "ALTENGAMME"]
+    assert data["not_found"] == []
+    # Duplicates are asked for once
+    assert route.calls.last.request.url.params["ids"].split(",") == [
+        BONN_UUID, KOELN_UUID.upper(), ALTENGAMME_UUID
+    ]
+
+
+async def test_compare_stations_reports_stations_not_returned(client, respx_mock):
+    # The API leaves out unknown stations and those without the parameter
+    stations = load_fixture("stations_compare_w")
+    respx_mock.get(STATIONS_URL).respond(json=[s for s in stations if s["uuid"] == KOELN_UUID])
+    unknown = "00000000-0000-0000-0000-000000000000"
+
+    result = await client.call_tool(
+        "compare_stations", {"uuids": [unknown, KOELN_UUID, ALTENGAMME_UUID]}
+    )
+
+    data = result.structured_content
+    assert [s["station"] for s in data["stations"]] == ["KÖLN"]
+    assert data["not_found"] == [unknown, ALTENGAMME_UUID]
+
+
+async def test_compare_stations_none_returned(client, respx_mock):
+    respx_mock.get(STATIONS_URL).respond(json=[])
+
+    result = await client.call_tool(
+        "compare_stations", {"uuids": [KOELN_UUID], "parameter": "XYZ"}
+    )
+
+    assert result.structured_content == {
+        "parameter": "XYZ", "stations": [], "not_found": [KOELN_UUID]
+    }
+
+
+async def test_compare_stations_without_characteristic_values(client, respx_mock):
+    # Discharge has neither characteristic values nor a gauge zero
+    q = load_fixture("timeseries_koeln_q")
+    station = load_fixture("station_koeln") | {"timeseries": [q]}
+    route = respx_mock.get(STATIONS_URL).respond(json=[station])
+
+    result = await client.call_tool(
+        "compare_stations", {"uuids": [KOELN_UUID], "parameter": "Q"}
+    )
+
+    assert route.calls.last.request.url.params["timeseries"] == "Q"
+    compared = result.structured_content["stations"][0]
+    assert compared["unit"] == q["unit"]
+    assert compared["gaugeZero"] is None
+    assert compared["characteristic_values"] == {}
+
+
+async def test_compare_stations_tolerates_missing_fields(client, respx_mock):
+    stations = load_fixture("stations_compare_w")
+    station = next(s for s in stations if s["uuid"] == KOELN_UUID)
+    for key in ("km", "water"):
+        del station[key]
+    for key in ("gaugeZero", "currentMeasurement", "comment"):
+        station["timeseries"][0].pop(key, None)
+    respx_mock.get(STATIONS_URL).respond(json=stations)
+
+    result = await client.call_tool("compare_stations", {"uuids": [KOELN_UUID]})
+
+    compared = result.structured_content["stations"][0]
+    for key in ("km", "water", "gaugeZero", "current", "comment"):
+        assert compared[key] is None, key
+    assert compared["characteristic_values"]
 
 
 async def test_get_recent_measurements(client, respx_mock, timeseries_w, snapshot_json):
@@ -779,6 +880,8 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         ("get_measurements_chart", {**KOELN_W, "hours": 841}, "hours"),
         ("get_measurements_chart", {**KOELN_W, "start": "2026-09-20T00:00"}, "start"),
         ("list_search_values", {"field": "station"}, "field"),
+        ("compare_stations", {"uuids": []}, "uuids"),
+        ("compare_stations", {"uuids": [KOELN_UUID] * 31}, "uuids"),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
@@ -799,6 +902,7 @@ async def test_invalid_arguments_are_rejected(client, respx_mock, tool, argument
         ("show_stations_map", "latitude", {"minimum": -90, "maximum": 90}),
         ("show_stations_map", "longitude", {"minimum": -180, "maximum": 180}),
         ("get_recent_measurements", "count", {"minimum": 1, "maximum": 100}),
+        ("compare_stations", "uuids", {"minItems": 1, "maxItems": 30}),
     ],
 )
 async def test_constraints_in_tool_schema(client, tool, argument, constraint):
@@ -910,6 +1014,7 @@ async def test_tools_are_annotated_read_only(client):
         "show_stations_map",
         "get_latest_measurements",
         "get_characteristic_values",
+        "compare_stations",
         "get_recent_measurements",
         "get_measurement_history",
         "get_measurements_chart",

@@ -27,6 +27,8 @@ Workflow:
 - Use the station uuid from those results for get_station_info and the
   measurement tools: get_latest_measurements, get_characteristic_values,
   get_recent_measurements, get_measurement_history and get_measurements_chart.
+  For the current value of one parameter at several stations, call
+  compare_stations once instead of get_latest_measurements per station.
 - For a time span (e.g., the last 24 hours, a week or a past day), call
   get_measurement_history instead of estimating a count for
   get_recent_measurements: measurement intervals differ per timeseries (1, 5,
@@ -42,7 +44,9 @@ Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),
   not water depth. Absolute height = gaugeZero (m above NHN) + W / 100.
   Some stations, mostly on canals, report W directly in m+NN; the unit
-  returned with the measured values tells which.
+  returned with the measured values tells which. W values of different
+  stations are therefore not comparable directly; compare states,
+  characteristic values or absolute heights instead.
 - To tell how high or low a water level is, compare it with the
   characteristic values from get_characteristic_values (e.g., MNW, MW, MHW,
   HSW, the record low NNW and high HHW); state_mnw_mhw and state_nsw_hsw

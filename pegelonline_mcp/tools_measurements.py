@@ -13,16 +13,17 @@ from pydantic import AwareDatetime
 from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.client import HISTORY_MINUTES
-from pegelonline_mcp.constraints import Hours, RecentCount, Resolution
+from pegelonline_mcp.constraints import Hours, RecentCount, Resolution, StationIds
 from pegelonline_mcp.mapping import (
     characteristic_value,
+    current_measurement,
     normalize_timeseries,
     timeseries_comment,
     water_name,
 )
 from pegelonline_mcp.models import (
     CharacteristicValues,
-    CurrentMeasurement,
+    ComparedStation,
     HistoryRows,
     HistorySummary,
     LatestMeasurement,
@@ -30,6 +31,7 @@ from pegelonline_mcp.models import (
     Measurement,
     MeasurementHistory,
     RecentMeasurements,
+    StationComparison,
 )
 
 logger = logging.getLogger(__name__)
@@ -142,15 +144,6 @@ async def get_characteristic_values(
         uuid, parameter, current=True, characteristic_values=True
     )
 
-    curr = timeseries.get("currentMeasurement")
-    current: CurrentMeasurement | None = None
-    if curr:
-        current = {
-            "timestamp": curr.get("timestamp"),
-            "value": curr.get("value"),
-            "state_mnw_mhw": curr.get("stateMnwMhw"),
-            "state_nsw_hsw": curr.get("stateNswHsw"),
-        }
     values = [
         characteristic_value(cv) for cv in timeseries.get("characteristicValues") or []
     ]
@@ -164,9 +157,79 @@ async def get_characteristic_values(
         "parameter": parameter,
         "unit": timeseries.get("unit"),
         "comment": timeseries_comment(timeseries),
-        "current": current,
+        "current": current_measurement(timeseries),
         "characteristic_values": values,
     }
+
+
+def _compared_station(station: dict) -> ComparedStation:
+    """A compared station with its current measurement and characteristic values."""
+    # The API includes only the requested timeseries
+    timeseries = normalize_timeseries(station)
+    ts = timeseries[0] if timeseries else {}
+    return {
+        "uuid": station.get("uuid"),
+        "station": station.get("longname"),
+        "water": water_name(station),
+        "km": station.get("km"),
+        "unit": ts.get("unit"),
+        "gaugeZero": ts.get("gaugeZero"),
+        "comment": timeseries_comment(ts),
+        "current": current_measurement(ts),
+        "characteristic_values": {
+            cv["shortname"]: cv.get("value")
+            for cv in ts.get("characteristicValues") or []
+            if isinstance(cv, dict) and isinstance(cv.get("shortname"), str)
+        },
+    }
+
+
+async def compare_stations(uuids: StationIds, parameter: str = "W") -> StationComparison:
+    """
+    Fetch the current measurement of one parameter at several stations in a
+    single call, e.g. to compare the water levels along a river. Each station
+    comes with its water body, river kilometer (km), gauge zero, the comment on
+    its timeseries and its characteristic values as short name and value
+    (e.g., MNW, MW, MHW, HSW, NNW, HHW); get_characteristic_values explains
+    them with their periods and dates. TuGLW is a fairway depth, not a water
+    level.
+
+    Water levels (W) are relative to each station's own gauge zero, so the W
+    values of different stations cannot be compared directly. Compare their
+    states (state_mnw_mhw, state_nsw_hsw, as in get_latest_measurements),
+    where they lie between their characteristic values, or their absolute
+    heights: gaugeZero (m above NHN) + W / 100 for W in cm.
+
+    The stations come in the order of uuids. not_found lists the uuids the
+    API did not return: unknown stations and stations without the parameter.
+
+    Args:
+        uuids: The UUIDs of the stations (1 to 30, e.g., from search_stations).
+        parameter: The shortname of the parameter (default: 'W').
+    """
+    logger.info("compare_stations: %d uuids parameter=%s", len(uuids), parameter)
+    requested = list(dict.fromkeys(uuid.strip() for uuid in uuids))
+    # The API returns the uuids in lower case and in its own order
+    found = {
+        s["uuid"].casefold(): s
+        for s in await client.fetch_stations_current(requested, parameter)
+        if isinstance(s.get("uuid"), str)
+    }
+
+    stations: list[ComparedStation] = []
+    not_found: list[str] = []
+    for uuid in requested:
+        station = found.get(uuid.casefold())
+        if station is None:
+            not_found.append(uuid)
+        else:
+            stations.append(_compared_station(station))
+    logger.info(
+        "compare_stations: parameter=%s -> %d stations, %d not found",
+        parameter, len(stations), len(not_found),
+    )
+
+    return {"parameter": parameter, "stations": stations, "not_found": not_found}
 
 
 async def get_recent_measurements(
@@ -495,6 +558,7 @@ def register(mcp: FastMCP) -> None:
     """Register the measurement tools on the server."""
     mcp.tool(get_latest_measurements, annotations=READ_ONLY)
     mcp.tool(get_characteristic_values, annotations=READ_ONLY)
+    mcp.tool(compare_stations, annotations=READ_ONLY)
     mcp.tool(get_recent_measurements, annotations=READ_ONLY)
     # Lets Claude Code keep the largest histories in context
     mcp.tool(

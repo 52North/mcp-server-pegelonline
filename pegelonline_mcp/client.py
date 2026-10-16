@@ -54,6 +54,23 @@ async def fetch_station(uuid: str, current: bool = False) -> dict:
     return await get_json(url, params=params)
 
 
+async def fetch_stations_current(ids: list[str], parameter: str) -> list[dict]:
+    """Several stations with one timeseries, its current measurement and
+    characteristic values, from a single request.
+
+    The API leaves out unknown stations and those without the parameter, and
+    returns the others in its own order.
+    """
+    params = {
+        "ids": ",".join(ids),
+        "timeseries": parameter,
+        "includeTimeseries": "true",
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+    return await get_json(f"{OFFICIAL_API_URL}/stations.json", params=params)
+
+
 def _timeseries_url(uuid: str, parameter: str) -> str:
     """Base URL of a station parameter (timeseries), without suffix."""
     return f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}/{_segment(parameter)}"

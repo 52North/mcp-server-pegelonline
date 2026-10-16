@@ -1,0 +1,90 @@
+{
+  "not_found": [],
+  "parameter": "W",
+  "stations": [
+    {
+      "characteristic_values": {
+        "GlW": 139.0,
+        "HHW": 1069.0,
+        "HSW": 830.0,
+        "MHW": 725.0,
+        "MNW": 114.0,
+        "MW": 297.0,
+        "M_I": 620.0,
+        "M_II": 830.0,
+        "NNW": 69.0,
+        "TuGLW": 250.0
+      },
+      "comment": null,
+      "current": {
+        "state_mnw_mhw": "low",
+        "state_nsw_hsw": "normal",
+        "timestamp": "2026-10-16T11:00:00+02:00",
+        "value": 57.0
+      },
+      "gaugeZero": {
+        "unit": "m. ü. NHN",
+        "validFrom": "2019-11-01",
+        "value": 35.038
+      },
+      "km": 688.0,
+      "station": "KÖLN",
+      "unit": "cm",
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "GlW": 142.0,
+        "HHW": 1013.0,
+        "MHW": 680.0,
+        "MNW": 121.0,
+        "MW": 290.0,
+        "NNW": 81.0,
+        "TuGLW": 250.0
+      },
+      "comment": null,
+      "current": {
+        "state_mnw_mhw": "low",
+        "state_nsw_hsw": "unknown",
+        "timestamp": "2026-10-16T11:00:00+02:00",
+        "value": 73.0
+      },
+      "gaugeZero": {
+        "unit": "m. ü. NHN",
+        "validFrom": "2019-11-01",
+        "value": 42.713
+      },
+      "km": 654.8,
+      "station": "BONN",
+      "unit": "cm",
+      "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "HThw": 1103.0,
+        "MThw": 771.0,
+        "MTnw": 532.0,
+        "NTnw": 388.0
+      },
+      "comment": null,
+      "current": {
+        "state_mnw_mhw": "unknown",
+        "state_nsw_hsw": "unknown",
+        "timestamp": "2026-10-16T11:01:00+02:00",
+        "value": 681.0
+      },
+      "gaugeZero": {
+        "unit": "m. ü. NHN",
+        "validFrom": "2019-11-01",
+        "value": -5.021
+      },
+      "km": 588.787,
+      "station": "ALTENGAMME",
+      "unit": "cm",
+      "uuid": "2ee12b9a-f7fd-4856-82b9-6bdd850c2bba",
+      "water": "ELBE"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import pytest
 from conftest import load_fixture
 from pegelonline_mcp.mapping import (
     characteristic_value,
+    current_measurement,
     normalize_timeseries,
     parameter_info,
     search_values,
@@ -146,6 +147,24 @@ def test_characteristic_value_strips_longname():
     cv = {"shortname": "MW", "longname": "Mittel der Tageswasserstände "}
 
     assert characteristic_value(cv)["longname"] == "Mittel der Tageswasserstände"
+
+
+def test_current_measurement():
+    ts = load_fixture("timeseries_koeln_w_characteristic")
+    current = ts["currentMeasurement"]
+
+    assert current_measurement(ts) == {
+        "timestamp": current["timestamp"],
+        "value": current["value"],
+        "state_mnw_mhw": current["stateMnwMhw"],
+        "state_nsw_hsw": current["stateNswHsw"],
+    }
+
+
+def test_current_measurement_missing():
+    assert current_measurement({}) is None
+    assert current_measurement({"currentMeasurement": None}) is None
+    assert current_measurement({"currentMeasurement": {}}) is None
 
 
 def test_characteristic_value_missing_fields():
