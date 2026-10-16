@@ -22,6 +22,7 @@ from conftest import (
     SEARCH_URL,
     STATION_URL,
     TIMESERIES_URL,
+    all_stations,
     fake_measurements_api,
     load_fixture,
 )
@@ -160,6 +161,104 @@ async def test_search_stations_tolerates_missing_fields(client, respx_mock):
     station = result.structured_content["stations"][0]
     for key in ("kreis", "einzugsgebiet", "land", "water", "mqtttopic"):
         assert station[key] is None, key
+
+
+async def test_list_search_values(client, respx_mock, snapshot_json):
+    route = respx_mock.get(SEARCH_URL).respond(json=all_stations())
+
+    result = await client.call_tool("list_search_values", {"field": "land"})
+
+    assert not route.calls.last.request.url.params
+    assert result.structured_content == snapshot_json
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        (
+            "agency",
+            [
+                ("HAMBURG PORT AUTHORITY", 1), ("STANDORT DUISBURG", 1),
+                ("STANDORT KÖLN", 3), ("STANDORT LAUENBURG", 2),
+            ],
+        ),
+        ("einzugsgebiet", [("Elbe", 3), ("Rhein", 4)]),
+        ("kreis", [("Bonn", 1), ("Düsseldorf", 1), ("Hamburg", 3), ("Köln", 2)]),
+        ("country", [("Deutschland", 7)]),
+    ],
+)
+async def test_list_search_values_counts_stations(client, respx_mock, field, expected):
+    respx_mock.get(SEARCH_URL).respond(json=all_stations())
+
+    result = await client.call_tool("list_search_values", {"field": field})
+
+    values = result.structured_content["values"]
+    assert [(v["value"], v["stations"]) for v in values] == expected
+    # The filter takes these values themselves, so there are no long names
+    assert not [v for v in values if "longnames" in v]
+
+
+async def test_list_search_values_of_water_bodies(client, respx_mock):
+    data = all_stations()
+    data["stations"][0]["water"] = {"shortname": "NOK", "longname": "NORD-OSTSEE-KANAL"}
+    respx_mock.get(SEARCH_URL).respond(json=data)
+
+    result = await client.call_tool("list_search_values", {"field": "gewaesser"})
+
+    # gewaesser takes the short name; the long name tells which water body it is
+    assert result.structured_content["values"] == [
+        {"value": "ELBE", "longnames": ["ELBE"], "stations": 3},
+        {"value": "NOK", "longnames": ["NORD-OSTSEE-KANAL"], "stations": 1},
+        {"value": "RHEIN", "longnames": ["RHEIN"], "stations": 3},
+    ]
+
+
+async def test_list_search_values_of_parameters(client, respx_mock):
+    data = all_stations()
+    # Live, one short name stands for several long names (Q: ABFLUSS and
+    # ABFLUSS_ROHDATEN); a station with two such timeseries counts once
+    data["stations"][1]["timeseries"].append({"shortname": "Q", "longname": "ABFLUSS"})
+    respx_mock.get(SEARCH_URL).respond(json=data)
+
+    result = await client.call_tool("list_search_values", {"field": "parameter"})
+
+    # W includes Bonn, whose single timeseries comes as a dict
+    assert result.structured_content["values"] == [
+        {"value": "Q", "longnames": ["ABFLUSS", "ABFLUSS_ROHDATEN"], "stations": 3},
+        {"value": "W", "longnames": ["WASSERSTAND ROHDATEN"], "stations": 7},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("kreis", [("Düsseldorf", 1), ("Hamburg", 3), ("Köln", 2)]),
+        ("gewaesser", [("ELBE", 3), ("RHEIN", 3)]),
+        ("parameter", [("Q", 3), ("W", 6)]),
+    ],
+)
+async def test_list_search_values_skips_missing_values(client, respx_mock, field, expected):
+    # Live, some stations lack a district or catchment area
+    data = all_stations()
+    for key in ("kreis", "water", "timeseries"):
+        del data["stations"][0][key]
+    respx_mock.get(SEARCH_URL).respond(json=data)
+
+    result = await client.call_tool("list_search_values", {"field": field})
+
+    values = result.structured_content["values"]
+    assert [(v["value"], v["stations"]) for v in values] == expected
+
+
+async def test_list_search_values_shares_the_resources_download(client, respx_mock):
+    route = respx_mock.get(SEARCH_URL).respond(json=all_stations())
+
+    await client.call_tool("list_search_values", {"field": "kreis"})
+    await client.call_tool("list_search_values", {"field": "parameter"})
+    contents = await client.read_resource("states://list")
+
+    assert contents[0].text
+    assert route.call_count == 1
 
 
 async def test_get_station_info(client, respx_mock, snapshot_json):
@@ -679,6 +778,7 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         ("get_measurement_history", {**KOELN_W, "resolution": "minute"}, "resolution"),
         ("get_measurements_chart", {**KOELN_W, "hours": 841}, "hours"),
         ("get_measurements_chart", {**KOELN_W, "start": "2026-09-20T00:00"}, "start"),
+        ("list_search_values", {"field": "station"}, "field"),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
@@ -732,6 +832,15 @@ async def test_resolution_in_tool_schema(client):
     schema = tools["get_measurement_history"].inputSchema["properties"]["resolution"]
 
     assert schema["enum"] == ["auto", "raw", "hour", "day"]
+
+
+async def test_search_field_in_tool_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+    schema = tools["list_search_values"].inputSchema["properties"]["field"]
+
+    assert schema["enum"] == [
+        "land", "agency", "einzugsgebiet", "kreis", "country", "gewaesser", "parameter"
+    ]
 
 
 async def test_history_allows_large_results(client):
@@ -795,6 +904,7 @@ async def test_tools_are_annotated_read_only(client):
 
     assert {t.name for t in tools} == {
         "search_stations",
+        "list_search_values",
         "get_station_info",
         "find_nearest_stations",
         "show_stations_map",

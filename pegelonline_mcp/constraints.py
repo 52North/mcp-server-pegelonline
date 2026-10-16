@@ -23,3 +23,7 @@ Hours = Annotated[float, Field(gt=0, le=HISTORY_MINUTES // 60)]
 # Rows of a measurement history: raw values, or min/mean/max per hour or
 # day; auto takes raw values while they fit
 Resolution = Literal["auto", "raw", "hour", "day"]
+# The search_stations filters whose values list_search_values lists
+SearchField = Literal[
+    "land", "agency", "einzugsgebiet", "kreis", "country", "gewaesser", "parameter"
+]

@@ -26,6 +26,33 @@ def water_name(station: dict) -> str | None:
     return water.get("longname")
 
 
+def search_values(station: dict, field: str) -> list[tuple[str, str | None]]:
+    """Values of a search_stations filter that a station has, each with a long name.
+
+    For gewaesser and parameter the value is a short name, which comes with
+    the long name of the water body or timeseries; the other filters take
+    the station field itself, without a long name. Missing values are dropped.
+    """
+    if field == "gewaesser":
+        water = station.get("water")
+        pairs = (
+            [(water.get("shortname"), water.get("longname"))]
+            if isinstance(water, dict) else []
+        )
+    elif field == "parameter":
+        pairs = [
+            (ts.get("shortname"), ts.get("longname"))
+            for ts in normalize_timeseries(station)
+        ]
+    else:
+        pairs = [(station.get(field), None)]
+    return [
+        (value, longname if isinstance(longname, str) and longname else None)
+        for value, longname in pairs
+        if isinstance(value, str) and value
+    ]
+
+
 def parameter_info(ts: dict) -> ParameterInfo:
     """Short description of an observation parameter (timeseries)."""
     return {

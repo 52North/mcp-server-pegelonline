@@ -6,7 +6,7 @@ district for some stations, and a stricter type would fail the whole call.
 Only fields computed here or echoing an argument are not.
 """
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class ParameterInfo(TypedDict):
@@ -55,6 +55,22 @@ class SearchResult(TypedDict):
     returned: int
     truncated: bool
     stations: list[FoundStation]
+
+
+class SearchValue(TypedDict):
+    """Value of a search_stations filter."""
+
+    value: str
+    # Only where value is a short name (gewaesser, parameter): the names behind it
+    longnames: NotRequired[list[str]]
+    stations: int
+
+
+class SearchValues(TypedDict):
+    """Values of one search_stations filter."""
+
+    field: str
+    values: list[SearchValue]
 
 
 class NearbyStations(TypedDict):

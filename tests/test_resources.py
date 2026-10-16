@@ -5,18 +5,8 @@ from html.parser import HTMLParser
 import httpx
 import pytest
 
-from conftest import SEARCH_URL, WATERS_URL, load_fixture
+from conftest import SEARCH_URL, WATERS_URL, all_stations, load_fixture
 from pegelonline_mcp.resources import MAP_UI_URI
-
-
-def all_stations() -> dict:
-    """Unfiltered /search response spanning several federal states."""
-    rhein = load_fixture("search_rhein")
-    hamburg = load_fixture("search_hamburg")
-    return {
-        key: rhein[key] + hamburg[key]
-        for key in ("mqtttopics", "pegelonlinelinks", "stations")
-    }
 
 
 async def read_text(client, uri: str) -> str:

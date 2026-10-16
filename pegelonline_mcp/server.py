@@ -20,6 +20,8 @@ Workflow:
 - Locate stations with search_stations (by name, water body, state, ...) or,
   for a place or coordinate, with find_nearest_stations. Use show_stations_map
   instead when the user asks for a map.
+- When a search_stations filter finds nothing or too much, look up its values
+  with list_search_values (e.g., the short names gewaesser and parameter take).
 - The location tools expect WGS84 coordinates, not place names: resolve the
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info and the

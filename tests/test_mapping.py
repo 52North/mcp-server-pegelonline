@@ -5,6 +5,7 @@ from pegelonline_mcp.mapping import (
     characteristic_value,
     normalize_timeseries,
     parameter_info,
+    search_values,
     station_summary,
     timeseries_comment,
     water_name,
@@ -44,6 +45,42 @@ def test_water_name_missing():
     assert water_name({}) is None
     assert water_name({"water": None}) is None
     assert water_name({"water": {}}) is None
+
+
+def test_search_values_of_station_field():
+    assert search_values(rhein_station("KÖLN"), "kreis") == [("Köln", None)]
+
+
+def test_search_values_of_water_body():
+    station = {"water": {"shortname": "NOK", "longname": "NORD-OSTSEE-KANAL"}}
+
+    assert search_values(station, "gewaesser") == [("NOK", "NORD-OSTSEE-KANAL")]
+
+
+def test_search_values_of_parameters():
+    assert search_values({"timeseries": [W, Q]}, "parameter") == [
+        ("W", "WASSERSTAND ROHDATEN"),
+        ("Q", "ABFLUSS_ROHDATEN"),
+    ]
+    assert search_values({"timeseries": W}, "parameter") == [("W", "WASSERSTAND ROHDATEN")]
+
+
+@pytest.mark.parametrize("field", ["kreis", "gewaesser", "parameter"])
+def test_search_values_missing(field):
+    assert search_values({}, field) == []
+    assert search_values({"kreis": None, "water": None, "timeseries": None}, field) == []
+
+
+def test_search_values_drops_empty_names():
+    station = {
+        "kreis": "",
+        "water": {"shortname": "NOK", "longname": ""},
+        "timeseries": [{"longname": "ABFLUSS"}],
+    }
+
+    assert search_values(station, "kreis") == []
+    assert search_values(station, "gewaesser") == [("NOK", None)]
+    assert search_values(station, "parameter") == []
 
 
 def test_parameter_info():

@@ -33,6 +33,16 @@ def load_fixture(name: str) -> Any:
     return json.loads((FIXTURES_DIR / f"{name}.json").read_text(encoding="utf-8"))
 
 
+def all_stations() -> dict:
+    """Unfiltered /search response spanning several federal states."""
+    rhein = load_fixture("search_rhein")
+    hamburg = load_fixture("search_hamburg")
+    return {
+        key: rhein[key] + hamburg[key]
+        for key in ("mqtttopics", "pegelonlinelinks", "stations")
+    }
+
+
 def fake_measurements_api(days: int, interval_minutes: int):
     """Handler mimicking the official API for a series over the last ``days``.
 

@@ -8,7 +8,8 @@ Pegelonline REST API.
 
 - **Station search**: `search_stations` filters by name, water body, agency, state,
   country, catchment area, district, observation parameter or bounding box;
-  `find_nearest_stations` searches around a coordinate.
+  `find_nearest_stations` searches around a coordinate; `list_search_values` lists
+  the values of each filter.
 - **Station details**: `get_station_info` returns metadata and the observed
   parameters.
 - **Measurements**: `get_latest_measurements` and `get_recent_measurements` return
@@ -174,7 +175,8 @@ Searches for stations with the following optional parameters:
 - `country`: Country (e.g., 'Deutschland').
 - `einzugsgebiet`: Catchment area (e.g., 'Ems').
 - `kreis`: District (e.g., 'Emsland').
-- `parameter`: Observation parameter (e.g., 'Wassertemperatur').
+- `parameter`: Observation parameter, its whole short or long name (e.g., 'WT' for
+  water temperature).
 - `bbox`: Bounding box (minLon, minLat, maxLon, maxLat).
 - `q`: General search query.
 
@@ -184,12 +186,32 @@ The API combines multiple parameters with a logical AND. An optional `limit`
 
 Text filters match case-insensitive substrings, also of alternative (e.g.,
 English) names: `land='Sachsen'` also returns stations in Niedersachsen and
-Sachsen-Anhalt.
+Sachsen-Anhalt. Only `parameter` takes a whole short or long name:
+`parameter='Wassertemperatur'` finds 20 stations, `parameter='WT'` all 135 with
+water temperature. `list_search_values` lists the values of each filter.
 
 Each station is returned in compact form: UUID, names, agency, water body,
 coordinates, MQTT topic, observation parameters and its `country`, `land`,
 `kreis` and `einzugsgebiet`, so exact matches can be checked. Further details
 come from `get_station_info`.
+
+### `list_search_values`
+
+Lists the values of one `search_stations` filter (`field`: `land`, `agency`,
+`einzugsgebiet`, `kreis`, `country`, `gewaesser` or `parameter`), sorted, each
+with the number of stations that have it. It helps when a search finds nothing
+or too much. Stations without the value are skipped.
+
+For `gewaesser` and `parameter` the value is the short name the filter takes
+(e.g., `NOK`, `WT`), with the long names behind it in `longnames`; `Q`, for
+example, stands for `ABFLUSS` and `ABFLUSS_ROHDATEN`. Names with a replacement
+character, such as `la Moselle Rivi�re`, are listed as they are, since the
+filter matches them that way.
+
+The tool reads the cached download of all stations that `states://list`,
+`agencies://list` and `catchment-areas://list` share, so it sends no request of
+its own while the cache is fresh. The largest list, `kreis` with 165 districts,
+takes about 7 600 characters.
 
 ### `get_station_info`
 
@@ -306,7 +328,7 @@ integrity hashes and only accepts messages from its host frame.
 ## Resources
 
 - `water-bodies://list`: Returns a list of all available water bodies (Gewässer).
-- `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations. It shares one cached download of all stations with `agencies://list` and `catchment-areas://list`.
+- `states://list`: Returns a list of all federal states (Bundesländer) that have gauge stations. It shares one cached download of all stations with `agencies://list`, `catchment-areas://list` and the `list_search_values` tool.
 - `states://{state}/stations`: Returns a list of all stations within a specific federal state (e.g., `states://Nordrhein-Westfalen/stations`).
 - `agencies://list`: Returns a list of all agencies (WSV locations and other operators) that run gauge stations, the values of the `agency` search filter.
 - `catchment-areas://list`: Returns a list of all catchment areas (Einzugsgebiete) that have gauge stations, the values of the `einzugsgebiet` search filter. Two names come from the Dict API with a replacement character instead of an umlaut (`Fr�nkische Rezat`, `la Moselle Rivi�re`) and are listed as they are, since the filter matches them that way; search for a part such as `Rezat` or `Mosel`.

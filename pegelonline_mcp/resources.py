@@ -32,7 +32,7 @@ async def list_water_bodies() -> str:
 
 
 @cached("stations")
-async def _all_stations() -> list[dict]:
+async def all_stations() -> list[dict]:
     """Every station of the dict API, shared by the lists of their field values."""
     stations = await client.search()
     logger.info("all stations: fetched and cached %d stations", len(stations))
@@ -41,7 +41,7 @@ async def _all_stations() -> list[dict]:
 
 async def _distinct(field: str) -> list[str]:
     """Sorted distinct values of a station field; stations without it are skipped."""
-    return sorted({s[field] for s in await _all_stations() if s.get(field)})
+    return sorted({s[field] for s in await all_stations() if s.get(field)})
 
 
 async def list_states() -> str:

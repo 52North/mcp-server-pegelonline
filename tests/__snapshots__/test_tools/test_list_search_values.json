@@ -1,0 +1,13 @@
+{
+  "field": "land",
+  "values": [
+    {
+      "stations": 3,
+      "value": "Hamburg"
+    },
+    {
+      "stations": 4,
+      "value": "Nordrhein-Westfalen"
+    }
+  ]
+}

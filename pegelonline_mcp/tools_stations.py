@@ -1,17 +1,25 @@
 """Tools that locate stations and describe them."""
 
 import logging
+from collections import Counter, defaultdict
 
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
 
 from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
-from pegelonline_mcp.constraints import Count, Latitude, Longitude, RadiusKm
+from pegelonline_mcp.constraints import (
+    Count,
+    Latitude,
+    Longitude,
+    RadiusKm,
+    SearchField,
+)
 from pegelonline_mcp.geo import bbox_around, haversine_km
 from pegelonline_mcp.mapping import (
     normalize_timeseries,
     parameter_info,
+    search_values,
     station_summary,
     timeseries_comment,
     water_name,
@@ -20,11 +28,13 @@ from pegelonline_mcp.models import (
     NearbyStation,
     NearbyStations,
     SearchResult,
+    SearchValue,
+    SearchValues,
     StationInfo,
     StationParameter,
     StationsMap,
 )
-from pegelonline_mcp.resources import MAP_UI_URI
+from pegelonline_mcp.resources import MAP_UI_URI, all_stations
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +57,9 @@ async def search_stations(
     Multiple parameters are combined with AND. Text filters match
     case-insensitive substrings, also of alternative (e.g., English) names:
     land='Sachsen' also returns stations in Niedersachsen and Sachsen-Anhalt,
-    so check the returned fields when an exact match matters.
+    so check the returned fields when an exact match matters. Only parameter
+    takes a whole short or long name. list_search_values lists the values
+    of each filter.
 
     Each station comes in compact form: uuid, names, agency, water body,
     coordinates, MQTT topic, observation parameters and the country, land,
@@ -61,7 +73,8 @@ async def search_stations(
         country: Search by country (e.g., 'Deutschland').
         einzugsgebiet: Search by catchment area (e.g., 'Ems').
         kreis: Search by district/county (e.g., 'Emsland').
-        parameter: Search by observation parameter (e.g., 'Wassertemperatur').
+        parameter: Search by observation parameter, its whole short or long
+            name (e.g., 'WT' for water temperature).
         bbox: Search by bounding box (minLon, minLat, maxLon, maxLat, e.g., '7,52,8,53').
         q: General search across all parameters.
         limit: Maximum number of stations to return (default: 50). The response
@@ -108,6 +121,42 @@ async def search_stations(
             for s in stations
         ],
     }
+
+
+async def list_search_values(field: SearchField) -> SearchValues:
+    """
+    List the values of a search_stations filter with the number of stations
+    per value. Use it when a search finds nothing or too much, to see which
+    values exist: the text filters match case-insensitive substrings, also of
+    alternative names, while parameter matches a whole short or long name.
+
+    Pass value to the filter. For gewaesser and parameter, value is the short
+    name (e.g., 'NOK', 'WT') and longnames gives the names behind it. A few
+    names contain a replacement character (�) instead of an umlaut, e.g.
+    'la Moselle Rivi�re'; search for a part without it, such as 'Mosel'.
+
+    Args:
+        field: The search_stations filter whose values to list.
+    """
+    logger.info("list_search_values: field=%s", field)
+    stations: Counter[str] = Counter()
+    longnames: defaultdict[str, set[str]] = defaultdict(set)
+    for s in await all_stations():
+        pairs = search_values(s, field)
+        # A station with two timeseries of one parameter counts once
+        stations.update({value for value, _ in pairs})
+        for value, longname in pairs:
+            if longname:
+                longnames[value].add(longname)
+
+    values: list[SearchValue] = []
+    for value, count in sorted(stations.items()):
+        entry: SearchValue = {"value": value, "stations": count}
+        if value in longnames:
+            entry["longnames"] = sorted(longnames[value])
+        values.append(entry)
+    logger.info("list_search_values: field=%s -> %d values", field, len(values))
+    return {"field": field, "values": values}
 
 
 async def get_station_info(uuid: str) -> StationInfo:
@@ -238,6 +287,7 @@ async def show_stations_map(
 def register(mcp: FastMCP) -> None:
     """Register the station tools on the server."""
     mcp.tool(search_stations, annotations=READ_ONLY)
+    mcp.tool(list_search_values, annotations=READ_ONLY)
     mcp.tool(get_station_info, annotations=READ_ONLY)
     mcp.tool(find_nearest_stations, annotations=READ_ONLY)
     mcp.tool(
