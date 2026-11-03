@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-import httpx
+import httpx2
 import pytest
 from fastmcp.exceptions import ToolError
 
@@ -183,8 +183,8 @@ async def test_fetch_measurements_falls_back_to_full_history(respx_mock):
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).mock(
         side_effect=[
-            httpx.Response(200, json=[]),
-            httpx.Response(200, json=measurements),
+            httpx2.Response(200, json=[]),
+            httpx2.Response(200, json=measurements),
         ]
     )
 

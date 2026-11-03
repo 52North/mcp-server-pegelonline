@@ -10,7 +10,7 @@ LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 # Loggers that report every request at INFO, duplicating the application's
 # own request logs; packaging/log-config.yaml quiets them for uvicorn.
-QUIET_LOGGERS = ("httpx", "mcp.server.lowlevel")
+QUIET_LOGGERS = ("httpx2", "mcp.server.lowlevel")
 
 logger = logging.getLogger(__name__)
 

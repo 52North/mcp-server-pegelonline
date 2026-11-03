@@ -1,11 +1,12 @@
 """Shared fixtures: in-memory MCP client, mocked upstream APIs and JSON snapshots."""
 
 import json
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from fastmcp import Client
 from syrupy.extensions.json import JSONSnapshotExtension
@@ -27,6 +28,16 @@ WATERS_URL = f"{OFFICIAL_API_URL}/waters.json"
 
 # Nothing decodes a chart, so the PNG signature stands in for a whole image
 CHART_PNG = b"\x89PNG\r\n\x1a\nchart"
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    # Without the alias, respx would leave httpx2 alone and the tests would
+    # send real requests to the upstream APIs
+    if sys.modules.get("httpx") is not httpx2:
+        raise pytest.UsageError(
+            "httpx does not resolve to httpx2, so respx cannot mock the client; "
+            "load the httpx2_alias plugin with -p (see addopts in pyproject.toml)."
+        )
 
 
 def load_fixture(name: str) -> Any:
@@ -56,12 +67,12 @@ def fake_measurements_api(days: int, interval_minutes: int):
         for age in range(days * 24 * 60 - interval_minutes, -1, -interval_minutes)
     ]
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         start = request.url.params.get("start", f"PT{10 * 24 * 60}M")
         minutes = int(start.removeprefix("PT").removesuffix("M"))
         since = now - timedelta(minutes=minutes)
         kept = [m for m in series if datetime.fromisoformat(m["timestamp"]) >= since]
-        return httpx.Response(200, json=kept)
+        return httpx2.Response(200, json=kept)
 
     return handler
 

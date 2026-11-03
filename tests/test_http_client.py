@@ -3,7 +3,7 @@
 import tomllib
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 from fastmcp.exceptions import ToolError
 
@@ -25,9 +25,9 @@ async def test_requests_identify_the_server(respx_mock):
 async def test_failed_connections_are_retried(respx_mock):
     route = respx_mock.get(STATION_URL).mock(
         side_effect=[
-            httpx.ConnectError("connection refused"),
-            httpx.ConnectTimeout("connect timed out"),
-            httpx.Response(200, json={"ok": True}),
+            httpx2.ConnectError("connection refused"),
+            httpx2.ConnectTimeout("connect timed out"),
+            httpx2.Response(200, json={"ok": True}),
         ]
     )
 
@@ -37,7 +37,7 @@ async def test_failed_connections_are_retried(respx_mock):
 
 async def test_retries_give_up_after_the_last_attempt(respx_mock):
     route = respx_mock.get(STATION_URL).mock(
-        side_effect=httpx.ConnectError("connection refused")
+        side_effect=httpx2.ConnectError("connection refused")
     )
 
     with pytest.raises(ToolError, match="Could not reach upstream API"):
@@ -48,8 +48,8 @@ async def test_retries_give_up_after_the_last_attempt(respx_mock):
 @pytest.mark.parametrize(
     "mock",
     [
-        {"side_effect": httpx.ReadTimeout("read timed out")},
-        {"return_value": httpx.Response(503)},
+        {"side_effect": httpx2.ReadTimeout("read timed out")},
+        {"return_value": httpx2.Response(503)},
     ],
     ids=["read-timeout", "server-error"],
 )
@@ -72,9 +72,9 @@ async def test_get_png_returns_the_image(respx_mock, content_type):
 @pytest.mark.parametrize(
     "response",
     [
-        httpx.Response(200, html="<html>Wartungsarbeiten</html>"),
-        httpx.Response(200, json={"status": 200}),
-        httpx.Response(200, content=CHART_PNG),
+        httpx2.Response(200, html="<html>Wartungsarbeiten</html>"),
+        httpx2.Response(200, json={"status": 200}),
+        httpx2.Response(200, content=CHART_PNG),
     ],
     ids=["html", "json", "no-content-type"],
 )
@@ -88,8 +88,8 @@ async def test_get_png_rejects_other_content(respx_mock, response):
 async def test_get_png_shares_retries_and_errors(respx_mock):
     route = respx_mock.get(CHART_URL).mock(
         side_effect=[
-            httpx.ConnectError("connection refused"),
-            httpx.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
+            httpx2.ConnectError("connection refused"),
+            httpx2.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
         ]
     )
 

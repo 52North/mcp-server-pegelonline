@@ -425,5 +425,5 @@ in production. The two runtimes are configured differently but share this format
   uv run uvicorn pegelonline_mcp.asgi:app --port 8000 --log-config packaging/log-config.yaml
   ```
 
-Both runtimes silence the per-request INFO logs of `httpx` and `mcp.server.lowlevel`,
+Both runtimes silence the per-request INFO logs of `httpx2` and `mcp.server.lowlevel`,
 since the application logs each upstream request itself.

@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import httpx
+import httpx2
 import pytest
 from fastmcp.exceptions import ToolError
 from mcp.types import ImageContent
@@ -530,8 +530,8 @@ async def test_get_recent_measurements_falls_back_to_full_history(
     measurements = load_fixture("measurements_w")
     route = respx_mock.get(MEASUREMENTS_URL).mock(
         side_effect=[
-            httpx.Response(200, json=measurements[-3:]),
-            httpx.Response(200, json=measurements),
+            httpx2.Response(200, json=measurements[-3:]),
+            httpx2.Response(200, json=measurements),
         ]
     )
 
@@ -839,11 +839,11 @@ async def test_get_measurements_chart_requests_window(client, respx_mock, window
     ("response", "message"),
     [
         (
-            httpx.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
+            httpx2.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
             "check that the station UUID",
         ),
         # E.g. a maintenance page delivered with status 200
-        (httpx.Response(200, html="<html>Wartungsarbeiten</html>"), "no PNG image.*text/html"),
+        (httpx2.Response(200, html="<html>Wartungsarbeiten</html>"), "no PNG image.*text/html"),
     ],
     ids=["unknown-parameter", "no-png"],
 )
@@ -1013,9 +1013,9 @@ async def test_upstream_non_json_raises_tool_error(client, respx_mock):
 @pytest.mark.parametrize(
     ("mock", "message"),
     [
-        ({"return_value": httpx.Response(503)}, "HTTP 503"),
-        ({"side_effect": httpx.ReadTimeout("read timed out")}, "timed out"),
-        ({"side_effect": httpx.ConnectError("connection refused")},
+        ({"return_value": httpx2.Response(503)}, "HTTP 503"),
+        ({"side_effect": httpx2.ReadTimeout("read timed out")}, "timed out"),
+        ({"side_effect": httpx2.ConnectError("connection refused")},
          "Could not reach upstream API"),
     ],
     ids=["server-error", "timeout", "connection-error"],

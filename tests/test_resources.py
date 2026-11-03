@@ -2,7 +2,7 @@
 
 from html.parser import HTMLParser
 
-import httpx
+import httpx2
 import pytest
 
 from conftest import SEARCH_URL, WATERS_URL, all_stations, load_fixture
@@ -50,8 +50,8 @@ async def test_list_states(client, respx_mock, snapshot_json):
 async def test_list_states_does_not_cache_empty_response(client, respx_mock):
     route = respx_mock.get(SEARCH_URL).mock(
         side_effect=[
-            httpx.Response(200, json={"stations": []}),
-            httpx.Response(200, json=all_stations()),
+            httpx2.Response(200, json={"stations": []}),
+            httpx2.Response(200, json=all_stations()),
         ]
     )
 

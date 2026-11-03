@@ -25,7 +25,7 @@ loggers:
   pegelonline_mcp:
     level: INFO
   # Both log every request at INFO, duplicating the application's request logs.
-  httpx:
+  httpx2:
     level: WARNING
   mcp.server.lowlevel:
     level: WARNING

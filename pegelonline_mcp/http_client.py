@@ -5,7 +5,7 @@ import logging
 import time
 from typing import Any
 
-import httpx
+import httpx2
 from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp import __version__
@@ -24,19 +24,19 @@ USER_AGENT = (
 )
 
 # Shared client for all requests; the process lifetime bounds its lifecycle.
-# No custom transport: with one, httpx ignores HTTPS_PROXY and NO_PROXY.
-http_client = httpx.AsyncClient(
-    timeout=httpx.Timeout(TIMEOUT_SECONDS), headers={"User-Agent": USER_AGENT}
+# No custom transport: with one, httpx2 ignores HTTPS_PROXY and NO_PROXY.
+http_client = httpx2.AsyncClient(
+    timeout=httpx2.Timeout(TIMEOUT_SECONDS), headers={"User-Agent": USER_AGENT}
 )
 
 
-async def _get(url: str, params: dict | None) -> httpx.Response:
+async def _get(url: str, params: dict | None) -> httpx2.Response:
     """GET that retries failed connection attempts with a growing delay."""
     attempt = 1
     while True:
         try:
             return await http_client.get(url, params=params)
-        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+        except (httpx2.ConnectError, httpx2.ConnectTimeout) as exc:
             if attempt > CONNECT_RETRIES:
                 raise
             logger.warning(
@@ -47,7 +47,7 @@ async def _get(url: str, params: dict | None) -> httpx.Response:
             attempt += 1
 
 
-async def _get_checked(url: str, params: dict | None) -> httpx.Response:
+async def _get_checked(url: str, params: dict | None) -> httpx2.Response:
     """GET a successful response, logged with its duration.
 
     Failed connection attempts are retried up to CONNECT_RETRIES times.
@@ -58,7 +58,7 @@ async def _get_checked(url: str, params: dict | None) -> httpx.Response:
     try:
         response = await _get(url, params)
         response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
+    except httpx2.HTTPStatusError as exc:
         status = exc.response.status_code
         logger.warning("GET %s failed with HTTP %s", url, status)
         if status == 404:
@@ -67,12 +67,12 @@ async def _get_checked(url: str, params: dict | None) -> httpx.Response:
                 "station UUID and parameter shortname are valid."
             ) from exc
         raise ToolError(f"Upstream API returned HTTP {status} for {url}.") from exc
-    except httpx.TimeoutException as exc:
+    except httpx2.TimeoutException as exc:
         logger.warning("GET %s timed out", url)
         raise ToolError(
             f"Request to {url} timed out after {TIMEOUT_SECONDS:g}s."
         ) from exc
-    except httpx.RequestError as exc:
+    except httpx2.RequestError as exc:
         logger.warning("GET %s failed: %s", url, exc)
         raise ToolError(f"Could not reach upstream API at {url}: {exc}") from exc
     logger.info(
