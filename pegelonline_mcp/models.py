@@ -8,6 +8,11 @@ Only fields computed here or echoing an argument are not.
 
 from typing import Literal, NotRequired, TypedDict
 
+# A value the measurement tools write as int when it is whole (48.0 → 48), to
+# keep the JSON short. FastMCP serializes the response it validated against the
+# output schema, so a plain float would turn the int back into 48.0.
+CompactNumber = int | float
+
 
 class ParameterInfo(TypedDict):
     """Observation parameter (timeseries) of a station."""
@@ -212,7 +217,7 @@ class Measurement(TypedDict):
     """Single measurement as the official API returns it."""
 
     timestamp: str | None
-    value: float | None
+    value: CompactNumber | None
 
 
 class RecentMeasurements(TypedDict):
@@ -235,7 +240,7 @@ class HistorySummary(TypedDict):
     last: Measurement | None
     min: Measurement | None
     max: Measurement | None
-    mean: float | None
+    mean: CompactNumber | None
 
 
 class HistoryRows(TypedDict):
@@ -244,7 +249,7 @@ class HistoryRows(TypedDict):
     resolution: Literal["raw", "hour", "day"]
     truncated: bool
     columns: list[str]
-    rows: dict[str, list[float | None]]
+    rows: dict[str, list[CompactNumber | None]]
 
 
 class MeasurementHistory(HistoryRows):
@@ -284,4 +289,4 @@ class ChartValues(TypedDict):
     start: str | None
     interval_minutes: int | None
     timestamps: list[str] | None
-    values: list[float | None]
+    values: list[CompactNumber | None]

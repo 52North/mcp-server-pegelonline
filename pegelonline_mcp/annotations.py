@@ -4,4 +4,4 @@ from mcp.types import ToolAnnotations
 
 # Every tool only reads, and all of them query the external Pegelonline APIs;
 # clients may run them without asking for confirmation.
-READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
+READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)

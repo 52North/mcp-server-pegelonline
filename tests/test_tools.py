@@ -1078,7 +1078,7 @@ async def test_invalid_arguments_are_rejected(client, respx_mock, tool, argument
 )
 async def test_constraints_in_tool_schema(client, tool, argument, constraint):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools[tool].inputSchema["properties"][argument]
+    schema = tools[tool].input_schema["properties"][argument]
 
     assert constraint.items() <= schema.items()
 
@@ -1086,7 +1086,7 @@ async def test_constraints_in_tool_schema(client, tool, argument, constraint):
 @pytest.mark.parametrize("tool", WINDOW_TOOLS)
 async def test_hours_constraints_in_tool_schema(client, tool):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools[tool].inputSchema["properties"]["hours"]
+    schema = tools[tool].input_schema["properties"]["hours"]
 
     # hours is optional, so its constraints sit in the non-null branch
     number = next(s for s in schema["anyOf"] if s.get("type") == "number")
@@ -1096,7 +1096,7 @@ async def test_hours_constraints_in_tool_schema(client, tool):
 @pytest.mark.parametrize("tool", WINDOW_TOOLS)
 async def test_window_in_tool_schema(client, tool):
     tools = {t.name: t for t in await client.list_tools()}
-    properties = tools[tool].inputSchema["properties"]
+    properties = tools[tool].input_schema["properties"]
 
     for argument in ("start", "end"):
         assert {"type": "string", "format": "date-time"} in properties[argument]["anyOf"]
@@ -1104,14 +1104,14 @@ async def test_window_in_tool_schema(client, tool):
 
 async def test_resolution_in_tool_schema(client):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools["get_measurement_history"].inputSchema["properties"]["resolution"]
+    schema = tools["get_measurement_history"].input_schema["properties"]["resolution"]
 
     assert schema["enum"] == ["auto", "raw", "hour", "day"]
 
 
 async def test_search_field_in_tool_schema(client):
     tools = {t.name: t for t in await client.list_tools()}
-    schema = tools["list_search_values"].inputSchema["properties"]["field"]
+    schema = tools["list_search_values"].input_schema["properties"]["field"]
 
     assert schema["enum"] == [
         "land", "agency", "einzugsgebiet", "kreis", "country", "gewaesser", "parameter"
@@ -1171,14 +1171,14 @@ async def test_output_schema_describes_response(client, tool, properties):
     # A plain dict return type would publish only an open object schema
     tools = {t.name: t for t in await client.list_tools()}
 
-    assert set(tools[tool].outputSchema["properties"]) == properties
+    assert set(tools[tool].output_schema["properties"]) == properties
 
 
 async def test_chart_has_no_output_schema(client):
     tools = {t.name: t for t in await client.list_tools()}
 
     # It returns image content, not structured data
-    assert tools["get_measurements_chart"].outputSchema is None
+    assert tools["get_measurements_chart"].output_schema is None
 
 
 async def test_tools_are_annotated_read_only(client):
@@ -1200,5 +1200,5 @@ async def test_tools_are_annotated_read_only(client):
         "get_chart_values",
     }
     for tool in tools:
-        assert tool.annotations.readOnlyHint is True, tool.name
-        assert tool.annotations.openWorldHint is True, tool.name
+        assert tool.annotations.read_only_hint is True, tool.name
+        assert tool.annotations.open_world_hint is True, tool.name
