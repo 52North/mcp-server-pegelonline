@@ -24,10 +24,8 @@ loggers:
   # Application logs (all pegelonline_mcp modules).
   pegelonline_mcp:
     level: INFO
-  # Both log every request at INFO, duplicating the application's request logs.
+  # Logs every request at INFO, duplicating the application's request logs.
   httpx2:
-    level: WARNING
-  mcp.server.lowlevel:
     level: WARNING
   # Stateless HTTP ends a throwaway session after every request and logs
   # "Terminating session: None" at INFO; everything else it logs is an error.
