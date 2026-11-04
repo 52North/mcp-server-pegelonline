@@ -1,4 +1,7 @@
-"""Tests for the shared HTTP client: identification, connection retries and PNGs."""
+"""Tests for the shared HTTP client: identification, connection retries and PNGs.
+
+The server's own version, which clients see, is checked here as well.
+"""
 
 import tomllib
 from pathlib import Path
@@ -96,6 +99,13 @@ async def test_get_png_shares_retries_and_errors(respx_mock):
     with pytest.raises(ToolError, match="404.*check that the station UUID"):
         await get_png(CHART_URL)
     assert route.call_count == 2
+
+
+async def test_server_reports_its_version(client):
+    # Clients learn the server's own version, not FastMCP's
+    await client.list_tools()
+
+    assert client.server_info.version == __version__
 
 
 def test_version_matches_pyproject():
