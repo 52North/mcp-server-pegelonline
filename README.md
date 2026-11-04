@@ -86,9 +86,10 @@ uv run ruff check
 uv run mypy
 ```
 
-The CI workflow (`.github/workflows/ci.yml`) runs these checks, the tests and a
-check that `packaging/requirements.txt` matches `uv.lock` on every push to
-`master` and every pull request.
+The CI workflow (`.github/workflows/ci.yml`) runs these checks and the tests on
+Python 3.12 and 3.14, imports the server without the dev dependencies, and checks
+that `packaging/requirements.txt` matches `uv.lock`, on every push to `master` and
+every pull request.
 
 ### Registering with Gemini CLI
 
