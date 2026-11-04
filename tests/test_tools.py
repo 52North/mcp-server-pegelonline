@@ -363,6 +363,25 @@ async def test_get_latest_measurements_reports_both_states(client, respx_mock):
     assert (w["state_mnw_mhw"], w["state_nsw_hsw"]) == ("unknown", "normal")
 
 
+async def test_get_latest_measurements_skips_malformed_current_measurement(
+    client, respx_mock
+):
+    data = load_fixture("station_koeln_current")
+    q_series = next(ts for ts in data["timeseries"] if ts["shortname"] == "Q")
+    q_series["currentMeasurement"] = ["unexpected"]
+    respx_mock.get(STATION_URL).respond(json=data)
+
+    result = await client.call_tool("get_latest_measurements", {"uuid": KOELN_UUID})
+
+    [w] = result.structured_content["measurements"]
+    assert w["shortname"] == "W"
+    # The model reads the fields in this order; the snapshots sort them
+    assert list(w) == [
+        "parameter", "shortname", "value", "unit", "timestamp",
+        "state_mnw_mhw", "state_nsw_hsw", "comment",
+    ]
+
+
 async def test_get_characteristic_values(client, respx_mock, snapshot_json):
     route = respx_mock.get(TIMESERIES_URL).respond(
         json=load_fixture("timeseries_koeln_w_characteristic")

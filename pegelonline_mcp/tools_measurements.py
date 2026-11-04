@@ -85,20 +85,21 @@ async def get_latest_measurements(uuid: str) -> LatestMeasurements:
     # Clean up the response to only return relevant measurement data
     measurements: list[LatestMeasurement] = []
     for ts in normalize_timeseries(data):
-        curr = ts.get("currentMeasurement")
-        if curr:
-            measurements.append({
-                "parameter": ts.get("longname"),
-                "shortname": ts.get("shortname"),
-                "value": curr.get("value"),
-                "unit": ts.get("unit"),
-                "timestamp": curr.get("timestamp"),
-                # Two independent classifications; the API sends "unknown"
-                # rather than omitting one, so neither can stand in for the other.
-                "state_mnw_mhw": curr.get("stateMnwMhw"),
-                "state_nsw_hsw": curr.get("stateNswHsw"),
-                "comment": timeseries_comment(ts),
-            })
+        current = current_measurement(ts)
+        if current is None:
+            continue
+        measurements.append({
+            "parameter": ts.get("longname"),
+            "shortname": ts.get("shortname"),
+            "value": current["value"],
+            "unit": ts.get("unit"),
+            "timestamp": current["timestamp"],
+            # Two independent classifications; the API sends "unknown"
+            # rather than omitting one, so neither can stand in for the other.
+            "state_mnw_mhw": current["state_mnw_mhw"],
+            "state_nsw_hsw": current["state_nsw_hsw"],
+            "comment": timeseries_comment(ts),
+        })
     logger.info(
         "get_latest_measurements: uuid=%s -> %d current measurements",
         uuid, len(measurements),
