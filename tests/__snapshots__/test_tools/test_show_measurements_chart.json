@@ -1,6 +1,7 @@
 {
   "comment": null,
   "interval_minutes": 15,
+  "note": "This client shows no chart, so the user sees nothing. Describe the course from get_measurements_chart.",
   "parameter": "W",
   "station": "KÖLN",
   "summary": {

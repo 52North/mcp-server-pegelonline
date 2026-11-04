@@ -46,12 +46,14 @@ Workflow:
 - When the user wants to see a chart of a parameter, call
   show_measurements_chart, analogous to show_stations_map: clients with MCP
   Apps show the user an interactive chart of the span, and you receive only
-  its summary. In clients without MCP Apps (e.g., Claude Code) the user sees
-  nothing; describe the course from get_measurements_chart instead.
-- To see how a parameter developed (trend, peaks, reference lines such as
-  NNW), call get_measurements_chart: a chart image that costs the same few
-  hundred tokens for any span. Take exact values from get_measurement_history,
-  and describe the chart in words, since the user may not see it.
+  its summary. Do not call get_measurements_chart alongside it, or the user
+  sees two charts. Only if the note in its response says the client shows no
+  chart (e.g., Claude Code), describe the course from get_measurements_chart.
+- Otherwise, to see how a parameter developed (trend, peaks, reference lines
+  such as NNW), call get_measurements_chart: a chart image that costs the
+  same few hundred tokens for any span. Take exact values from
+  get_measurement_history, and describe the chart in words, since the user
+  may not see it.
 
 Interpreting values:
 - Water level W in cm is relative to the station's gauge zero (Pegelnullpunkt),

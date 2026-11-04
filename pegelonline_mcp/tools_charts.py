@@ -3,7 +3,8 @@
 import logging
 
 from fastmcp import FastMCP
-from fastmcp.apps import AppConfig
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig
+from fastmcp.server.dependencies import get_context
 from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from pydantic import AwareDatetime
@@ -21,6 +22,26 @@ from pegelonline_mcp.models import MeasurementsChart
 from pegelonline_mcp.ui import CHART_UI_URI
 
 logger = logging.getLogger(__name__)
+
+CHART_SHOWN_NOTE = (
+    "The user sees this chart. Describe the course from the summary; do not "
+    "call get_measurements_chart for the same span."
+)
+CHART_NOT_SHOWN_NOTE = (
+    "This client shows no chart, so the user sees nothing. Describe the "
+    "course from get_measurements_chart."
+)
+
+
+def _client_renders_apps() -> tuple[bool, str | None]:
+    """Whether the client declared MCP Apps, and its name for the log."""
+    try:
+        ctx = get_context()
+        params = ctx.session.client_params
+    except RuntimeError:
+        return False, None
+    name = params.client_info.name if params is not None else None
+    return ctx.client_supports_extension(UI_EXTENSION_ID), name
 
 
 def _station_timeseries(station: dict, parameter: str) -> dict:
@@ -66,7 +87,9 @@ async def get_measurements_chart(
 
     The user may not see the image: some clients do not show it, others only
     inside the collapsed tool call. So describe what it shows in words. To
-    show the user a chart, call show_measurements_chart instead.
+    show the user a chart, call show_measurements_chart instead, not both:
+    call this one after show_measurements_chart only if its note says the
+    client shows no chart.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -110,13 +133,15 @@ async def show_measurements_chart(
     length. In clients without MCP Apps (e.g., Claude Code) the user sees
     no chart.
 
-    To see the course yourself, call get_measurements_chart; for exact
-    values and timestamps, get_measurement_history.
+    Do not call get_measurements_chart alongside it: where the user sees
+    this chart, its image would show a second one. The note in the response
+    says whether you need it afterwards. For exact values and timestamps,
+    call get_measurement_history.
 
     The response names the station and its water body, the unit and the
     timeseries comment, the interval in minutes, the window as start and end
     in UTC, and the summary of all values in it, as get_measurement_history
-    reports it.
+    reports it. Its note says whether this client shows the user the chart.
 
     Args:
         uuid: The unique identifier (UUID) of the station.
@@ -143,9 +168,11 @@ async def show_measurements_chart(
     )
     points = series.points(measurements)
     interval = timeseries.get("equidistance")
+    shown, client_name = _client_renders_apps()
     logger.info(
-        "show_measurements_chart: uuid=%s parameter=%s -> %d values",
-        uuid, shortname, len(points),
+        "show_measurements_chart: uuid=%s parameter=%s -> %d values; "
+        "client %s declares %s: %s",
+        uuid, shortname, len(points), client_name, UI_EXTENSION_ID, shown,
     )
 
     return {
@@ -159,6 +186,7 @@ async def show_measurements_chart(
         "start": window_start.isoformat(),
         "end": window_end.isoformat(),
         "summary": series.summary(points, series.grid(interval, points)),
+        "note": CHART_SHOWN_NOTE if shown else CHART_NOT_SHOWN_NOTE,
     }
 
 

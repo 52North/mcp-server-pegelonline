@@ -13,7 +13,10 @@ from zoneinfo import ZoneInfo
 
 import httpx2
 import pytest
+from fastmcp import Client
+from fastmcp.apps import UI_EXTENSION_ID
 from fastmcp.exceptions import ToolError
+from mcp.client import advertise
 from mcp.types import ImageContent
 
 from conftest import (
@@ -33,6 +36,7 @@ from pegelonline_mcp import tools_charts, tools_measurements
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.series import MAX_RAW_SLOTS
+from pegelonline_mcp.server import mcp
 from pegelonline_mcp.tools_measurements import MAX_RESULT_CHARS
 from pegelonline_mcp.ui import CHART_UI_URI
 
@@ -912,6 +916,27 @@ async def test_show_measurements_chart(client, respx_mock, snapshot_json):
     assert {k: v for k, v in data.items() if k not in ("start", "end")} == snapshot_json
 
 
+async def test_show_measurements_chart_note_without_apps(client, respx_mock, caplog):
+    mock_chart(respx_mock, [])
+
+    with caplog.at_level(logging.INFO, logger="pegelonline_mcp.tools_charts"):
+        result = await client.call_tool("show_measurements_chart", KOELN_W)
+
+    assert result.structured_content["note"] == tools_charts.CHART_NOT_SHOWN_NOTE
+    assert f"declares {UI_EXTENSION_ID}: False" in caplog.text
+
+
+async def test_show_measurements_chart_note_with_apps(respx_mock, caplog):
+    mock_chart(respx_mock, [])
+
+    async with Client(mcp, extensions=[advertise(UI_EXTENSION_ID)]) as apps_client:
+        with caplog.at_level(logging.INFO, logger="pegelonline_mcp.tools_charts"):
+            result = await apps_client.call_tool("show_measurements_chart", KOELN_W)
+
+    assert result.structured_content["note"] == tools_charts.CHART_SHOWN_NOTE
+    assert f"declares {UI_EXTENSION_ID}: True" in caplog.text
+
+
 @pytest.mark.parametrize("window", [{}, {"start": START.isoformat()}], ids=["hours", "start"])
 async def test_show_measurements_chart_window_ends_now(client, respx_mock, window):
     mock_chart(respx_mock, [])
@@ -1232,7 +1257,7 @@ async def test_history_allows_large_results(client):
             "show_measurements_chart",
             {
                 "uuid", "parameter", "station", "water", "unit", "comment",
-                "interval_minutes", "start", "end", "summary",
+                "interval_minutes", "start", "end", "summary", "note",
             },
         ),
     ],

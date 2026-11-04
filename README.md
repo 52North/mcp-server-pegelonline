@@ -348,6 +348,12 @@ window from `start` to `end`. The model receives only the summary: station, wate
 body, unit, timeseries comment, `interval_minutes`, the window as `start` and `end` in
 UTC, and the `summary` of `get_measurement_history`, but no rows; for 31 days of a
 1-minute series that is about 520 characters. Clients without MCP Apps show nothing.
+A `note` tells the model which case applies, depending on whether the client declared
+the `io.modelcontextprotocol/ui` extension. If it did, the note asks the model not to
+call `get_measurements_chart` for the same span as well. If not, it points the model
+to that tool. A note cannot stop a call made in parallel, though. So the
+docstrings and server instructions also tell the model not to call both tools at
+once, which in claude.ai would put a second chart in the chat.
 
 The UI ([`pegelonline_mcp/static/measurements_chart.html`](pegelonline_mcp/static/measurements_chart.html))
 fetches the values of exactly this window through `get_chart_values`, so the curve

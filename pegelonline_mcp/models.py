@@ -277,6 +277,8 @@ class MeasurementsChart(TypedDict):
     start: str
     end: str
     summary: HistorySummary
+    # Whether the user sees the chart, so the model knows if it must describe it
+    note: str
 
 
 class ChartValues(TypedDict):
