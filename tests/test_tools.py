@@ -656,7 +656,7 @@ async def test_invalid_time_windows_are_rejected(client, respx_mock, tool, windo
 async def test_invalid_time_windows_are_logged_as_warnings(respx_mock, window, message):
     # Called directly, since the client does not see the log level. Without
     # the client, nothing parses the timestamps.
-    arguments = {
+    arguments: dict[str, Any] = {
         key: datetime.fromisoformat(value) if isinstance(value, str) else value
         for key, value in window.items()
     }
@@ -859,7 +859,7 @@ async def test_get_measurements_chart(client, respx_mock):
     assert dict(route.calls.last.request.url.params) == {"start": "PT1440M", **CHART_SIZE}
     assert result.content == [
         ImageContent(
-            type="image", data=base64.b64encode(CHART_PNG).decode(), mimeType="image/png"
+            type="image", data=base64.b64encode(CHART_PNG).decode(), mime_type="image/png"
         )
     ]
     assert result.structured_content is None

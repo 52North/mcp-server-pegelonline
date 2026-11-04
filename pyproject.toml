@@ -53,3 +53,4 @@ src = [".", "tests"]
 
 [tool.mypy]
 files = ["pegelonline_mcp", "tests"]
+check_untyped_defs = true

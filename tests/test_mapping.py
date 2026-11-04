@@ -101,7 +101,9 @@ def test_timeseries_comment_prefers_long_description():
         }
     }
 
-    assert timeseries_comment(ts).startswith("Nach einer Schiffskollision")
+    comment = timeseries_comment(ts)
+    assert comment is not None
+    assert comment.startswith("Nach einer Schiffskollision")
 
 
 def test_timeseries_comment_falls_back_to_short_description():

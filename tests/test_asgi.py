@@ -5,6 +5,8 @@ It cannot live in a fixture: the lifespan's task group must be exited in the
 task that entered it, and pytest-asyncio tears fixtures down in another task.
 """
 
+from typing import Any
+
 import httpx2
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
@@ -17,9 +19,26 @@ MCP_HEADERS = {
 }
 
 
-def asgi_client(**kwargs) -> httpx2.AsyncClient:
-    kwargs.setdefault("base_url", "http://test")
-    return httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), **kwargs)
+def asgi_client(
+    headers: dict[str, str] | None = None,
+    timeout: httpx2.Timeout | None = None,
+    auth: httpx2.Auth | None = None,
+    **kwargs: Any,
+) -> httpx2.AsyncClient:
+    """A client that sends its requests straight to the ASGI app.
+
+    The parameters are those of McpHttpClientFactory, so that
+    StreamableHttpTransport can create it; FastMCP also passes follow_redirects.
+    """
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    return httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app),
+        base_url="http://test",
+        headers=headers,
+        auth=auth,
+        **kwargs,
+    )
 
 
 async def test_healthz():

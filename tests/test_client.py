@@ -250,4 +250,6 @@ async def test_fetch_measurements_window_follows_interval(
     assert route.call_count == 1
     assert route.calls[0].request.url.params["start"] == window
     assert len(recent) == values
-    assert recent[0]["timestamp"] > recent[-1]["timestamp"]
+    first, last = recent[0]["timestamp"], recent[-1]["timestamp"]
+    assert first is not None and last is not None
+    assert first > last
