@@ -54,7 +54,8 @@ async def search_stations(
 ) -> SearchResult:
     """
     Search for Pegelonline stations using various optional parameters.
-    Multiple parameters are combined with AND. Text filters match
+    Multiple parameters are combined with AND, except q: the API then
+    ignores all other filters, so pass q alone. Text filters match
     case-insensitive substrings, also of alternative (e.g., English) names:
     land='Sachsen' also returns stations in Niedersachsen and Sachsen-Anhalt,
     so check the returned fields when an exact match matters. Only parameter
@@ -76,7 +77,7 @@ async def search_stations(
         parameter: Search by observation parameter, its whole short or long
             name (e.g., 'WT' for water temperature).
         bbox: Search by bounding box (minLon, minLat, maxLon, maxLat, e.g., '7,52,8,53').
-        q: General search across all parameters.
+        q: General search across all fields; ignores the other filters.
         limit: Maximum number of stations to return (default: 50). The response
             reports the total number of matches, so a truncated result is visible.
     """

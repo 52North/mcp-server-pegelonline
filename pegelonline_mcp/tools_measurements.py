@@ -326,10 +326,15 @@ def _absolute_window(
 
 
 def _station_timeseries(station: dict, parameter: str) -> dict:
-    """The timeseries of ``parameter`` among a station's timeseries."""
+    """The timeseries of ``parameter`` among a station's timeseries.
+
+    Like the API, the short name matches regardless of case.
+    """
     timeseries = normalize_timeseries(station)
+    wanted = parameter.casefold()
     for ts in timeseries:
-        if ts.get("shortname") == parameter:
+        shortname = ts.get("shortname")
+        if isinstance(shortname, str) and shortname.casefold() == wanted:
             return ts
     available = ", ".join(sorted(str(ts.get("shortname")) for ts in timeseries))
     raise caller_error(
@@ -662,19 +667,21 @@ async def show_measurements_chart(
     window_start, window_end = _absolute_window(hours, start, end)
     station = await client.fetch_station(uuid)
     timeseries = _station_timeseries(station, parameter)
+    # The chart UI shows it and passes it on, so "w" becomes "W"
+    shortname = timeseries["shortname"]
     measurements = await client.fetch_measurements_since(
-        uuid, parameter, window_start, window_end
+        uuid, shortname, window_start, window_end
     )
     points = _points(measurements)
     interval = timeseries.get("equidistance")
     logger.info(
         "show_measurements_chart: uuid=%s parameter=%s -> %d values",
-        uuid, parameter, len(points),
+        uuid, shortname, len(points),
     )
 
     return {
         "uuid": uuid,
-        "parameter": parameter,
+        "parameter": shortname,
         "station": station.get("longname"),
         "water": water_name(station),
         "unit": timeseries.get("unit"),

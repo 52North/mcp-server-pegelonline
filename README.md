@@ -188,7 +188,9 @@ Searches for stations with the following optional parameters:
 - `bbox`: Bounding box (minLon, minLat, maxLon, maxLat).
 - `q`: General search query.
 
-The API combines multiple parameters with a logical AND. An optional `limit`
+The API combines multiple parameters with a logical AND, except `q`: with `q`
+set, the Dict API ignores all other filters (`q=Havel&land=Berlin` returns the
+same 87 stations as `q=Havel`). An optional `limit`
 (default: 50) caps the number of returned stations; the response reports
 `total_matches` and `truncated` so cut-off results are visible.
 

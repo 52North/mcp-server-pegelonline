@@ -943,6 +943,19 @@ async def test_show_measurements_chart_unknown_parameter(client, respx_mock):
         )
 
 
+async def test_show_measurements_chart_ignores_case_of_parameter(client, respx_mock):
+    # The API takes "w" as well; respx serves only the measurements of "W"
+    route = mock_chart(respx_mock, load_fixture("measurements_w"))
+
+    result = await client.call_tool(
+        "show_measurements_chart", {"uuid": KOELN_UUID, "parameter": "w"}
+    )
+
+    # The chart UI shows the short name and passes it on to its tool calls
+    assert result.structured_content["parameter"] == "W"
+    assert route.called
+
+
 async def test_show_measurements_chart_unknown_parameter_is_logged_as_warning(respx_mock):
     respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
 
