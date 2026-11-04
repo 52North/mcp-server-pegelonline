@@ -9,6 +9,7 @@ from starlette.responses import PlainTextResponse
 from pegelonline_mcp import (
     __version__,
     resources,
+    tools_charts,
     tools_measurements,
     tools_stations,
     ui,
@@ -76,6 +77,7 @@ mcp = FastMCP("Pegelonline", instructions=INSTRUCTIONS, version=__version__)
 
 tools_stations.register(mcp)
 tools_measurements.register(mcp)
+tools_charts.register(mcp)
 # Before the other resources, which keeps the order of resources/list
 ui.register(mcp)
 resources.register(mcp)

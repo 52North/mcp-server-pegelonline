@@ -29,10 +29,11 @@ from conftest import (
     fake_measurements_api,
     load_fixture,
 )
-from pegelonline_mcp import tools_measurements
+from pegelonline_mcp import tools_charts, tools_measurements
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
-from pegelonline_mcp.tools_measurements import MAX_RAW_SLOTS, MAX_RESULT_CHARS
+from pegelonline_mcp.series import MAX_RAW_SLOTS
+from pegelonline_mcp.tools_measurements import MAX_RESULT_CHARS
 from pegelonline_mcp.ui import CHART_UI_URI
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
@@ -960,7 +961,7 @@ async def test_show_measurements_chart_unknown_parameter_is_logged_as_warning(re
     respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
 
     with pytest.raises(ToolError, match="has no parameter 'LT'") as exc:
-        await tools_measurements.show_measurements_chart(KOELN_UUID, "LT")
+        await tools_charts.show_measurements_chart(KOELN_UUID, "LT")
     assert exc.value.log_level == logging.WARNING
 
 
