@@ -12,8 +12,11 @@ from pegelonline_mcp.client import HISTORY_MINUTES
 
 # Station limits: more than the ~730 stations
 Count = Annotated[int, Field(ge=1, le=1000)]
+# One station per item: the API splits ids at commas and returns every
+# station for an empty filter
+StationId = Annotated[str, Field(pattern=r"^[^,]*[^\s,][^,]*$")]
 # Stations compared at once; the official API takes at most 30 ids per request
-StationIds = Annotated[list[str], Field(min_length=1, max_length=30)]
+StationIds = Annotated[list[StationId], Field(min_length=1, max_length=30)]
 # "The last N values" of a timeseries; time spans go to get_measurement_history
 RecentCount = Annotated[int, Field(ge=1, le=100)]
 # 1000 km around any point in Germany covers the whole country

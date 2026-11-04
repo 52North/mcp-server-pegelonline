@@ -209,7 +209,8 @@ async def compare_stations(uuids: StationIds, parameter: str = "W") -> StationCo
     API did not return: unknown stations and stations without the parameter.
 
     Args:
-        uuids: The UUIDs of the stations (1 to 30, e.g., from search_stations).
+        uuids: The UUIDs of the stations, one per item (1 to 30, e.g., from
+            search_stations).
         parameter: The shortname of the parameter (default: 'W').
     """
     logger.info("compare_stations: %d uuids parameter=%s", len(uuids), parameter)

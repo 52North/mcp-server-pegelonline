@@ -251,7 +251,9 @@ depth, and on canals OBW and UBW are heights in `m` while W is in `m+NN`.
 
 Returns the current value of one parameter (`parameter` defaults to `W`) at up to
 30 stations by `uuids`, from a single request to the official API, which accepts
-no more ids at once. Each station comes with its name, water body, river
+no more ids at once. Each UUID is an item of its own: empty items and
+comma-separated UUIDs are rejected, since the API would return every station for
+an empty id and split the others. Each station comes with its name, water body, river
 kilometer, unit, gauge zero, timeseries comment, the current value with both
 states, and its characteristic values as short name and value (e.g.,
 `{"MNW": 114.0, "MW": 297.0, "MHW": 725.0}`); `get_characteristic_values` has

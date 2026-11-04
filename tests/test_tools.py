@@ -1081,6 +1081,10 @@ async def test_upstream_failures_raise_tool_error(client, respx_mock, mock, mess
         ("list_search_values", {"field": "station"}, "field"),
         ("compare_stations", {"uuids": []}, "uuids"),
         ("compare_stations", {"uuids": [KOELN_UUID] * 31}, "uuids"),
+        # An empty id makes the API return every station, a comma splits one
+        ("compare_stations", {"uuids": [""]}, "uuids.0"),
+        ("compare_stations", {"uuids": ["  "]}, "uuids.0"),
+        ("compare_stations", {"uuids": [f"{KOELN_UUID},{BONN_UUID}"]}, "uuids.0"),
     ],
 )
 async def test_invalid_arguments_are_rejected(client, respx_mock, tool, arguments, argument):
@@ -1102,6 +1106,11 @@ async def test_invalid_arguments_are_rejected(client, respx_mock, tool, argument
         ("show_stations_map", "longitude", {"minimum": -180, "maximum": 180}),
         ("get_recent_measurements", "count", {"minimum": 1, "maximum": 100}),
         ("compare_stations", "uuids", {"minItems": 1, "maxItems": 30}),
+        (
+            "compare_stations",
+            "uuids",
+            {"items": {"pattern": r"^[^,]*[^\s,][^,]*$", "type": "string"}},
+        ),
     ],
 )
 async def test_constraints_in_tool_schema(client, tool, argument, constraint):
