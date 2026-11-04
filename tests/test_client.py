@@ -1,5 +1,6 @@
 """Unit tests for the upstream API layer against mocked HTTP."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 import httpx2
@@ -112,8 +113,10 @@ async def test_path_segments_are_escaped(respx_mock):
 )
 async def test_dot_only_segments_are_rejected(respx_mock, call):
     # Escaping leaves dots alone, so ".." would still climb up the path
-    with pytest.raises(ToolError, match="Invalid station or parameter identifier"):
+    with pytest.raises(ToolError, match="Invalid station or parameter identifier") as exc:
         await call()
+    # The caller's mistake, not a failure of the server
+    assert exc.value.log_level == logging.WARNING
 
 
 async def test_fetch_measurements_most_recent_first(respx_mock):

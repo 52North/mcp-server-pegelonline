@@ -5,9 +5,8 @@ import math
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
-from fastmcp.exceptions import ToolError
-
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
+from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.http_client import get_json, get_png
 from pegelonline_mcp.models import Measurement
 
@@ -41,7 +40,7 @@ def _segment(value: str) -> str:
     dots would still be resolved as relative paths, so they are rejected.
     """
     if not value.strip("."):
-        raise ToolError(f"Invalid station or parameter identifier: {value!r}")
+        raise caller_error(f"Invalid station or parameter identifier: {value!r}")
     return quote(value, safe="")
 
 

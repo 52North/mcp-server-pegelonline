@@ -6,6 +6,7 @@ steps can prove the responses stay identical.
 
 import base64
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -28,6 +29,7 @@ from conftest import (
     fake_measurements_api,
     load_fixture,
 )
+from pegelonline_mcp import tools_measurements
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.resources import CHART_UI_URI
@@ -602,7 +604,8 @@ async def test_get_measurement_history_requests_window(
     assert dict(route.calls.last.request.url.params) == params
 
 
-@pytest.mark.parametrize(
+# Time windows the tools reject, with a part of the message
+INVALID_WINDOWS = pytest.mark.parametrize(
     ("window", "message"),
     [
         ({"hours": 24, "start": START.isoformat()}, "either hours or start"),
@@ -620,11 +623,28 @@ async def test_get_measurement_history_requests_window(
         "start-in-future", "start-too-old", "window-too-long",
     ],
 )
+
+
+@INVALID_WINDOWS
 @pytest.mark.parametrize("tool", WINDOW_TOOLS)
 async def test_invalid_time_windows_are_rejected(client, respx_mock, tool, window, message):
     # Rejected before any upstream request, which respx would refuse unmocked
     with pytest.raises(ToolError, match=message):
         await client.call_tool(tool, {**KOELN_W, **window})
+
+
+@INVALID_WINDOWS
+async def test_invalid_time_windows_are_logged_as_warnings(respx_mock, window, message):
+    # Called directly, since the client does not see the log level. Without
+    # the client, nothing parses the timestamps.
+    arguments = {
+        key: datetime.fromisoformat(value) if isinstance(value, str) else value
+        for key, value in window.items()
+    }
+
+    with pytest.raises(ToolError, match=message) as exc:
+        await tools_measurements.get_measurement_history(KOELN_UUID, "W", **arguments)
+    assert exc.value.log_level == logging.WARNING
 
 
 async def test_get_measurement_history_marks_gaps(client, respx_mock):
@@ -902,6 +922,14 @@ async def test_show_measurements_chart_unknown_parameter(client, respx_mock):
         await client.call_tool(
             "show_measurements_chart", {"uuid": KOELN_UUID, "parameter": "LT"}
         )
+
+
+async def test_show_measurements_chart_unknown_parameter_is_logged_as_warning(respx_mock):
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+
+    with pytest.raises(ToolError, match="has no parameter 'LT'") as exc:
+        await tools_measurements.show_measurements_chart(KOELN_UUID, "LT")
+    assert exc.value.log_level == logging.WARNING
 
 
 async def test_get_chart_values(client, respx_mock, timeseries_w, snapshot_json):

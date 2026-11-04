@@ -427,3 +427,7 @@ in production. The two runtimes are configured differently but share this format
 
 Both runtimes silence the per-request INFO logs of `httpx2`, since the application
 logs each upstream request itself.
+
+Requests the caller has to correct (an unknown station or parameter, an invalid
+time window) are logged as `WARNING` with the reason; failures of the upstream APIs
+(server errors, timeouts, unreachable hosts, unexpected content) as `ERROR`.

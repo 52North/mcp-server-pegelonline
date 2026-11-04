@@ -17,6 +17,9 @@ TIMEOUT_SECONDS = 30.0
 # retry; read timeouts and HTTP errors are not retried.
 CONNECT_RETRIES = 2
 RETRY_DELAY_SECONDS = 0.5
+# Statuses caused by the caller's input (an unknown station or parameter, an
+# invalid filter): logged as warnings, other failures as errors
+CALLER_ERROR_STATUSES = (400, 404)
 # Identifies this server to the Pegelonline operators
 USER_AGENT = (
     f"mcp-server-pegelonline/{__version__} "
@@ -61,12 +64,18 @@ async def _get_checked(url: str, params: dict | None) -> httpx2.Response:
     except httpx2.HTTPStatusError as exc:
         status = exc.response.status_code
         logger.warning("GET %s failed with HTTP %s", url, status)
+        log_level = (
+            logging.WARNING if status in CALLER_ERROR_STATUSES else logging.ERROR
+        )
         if status == 404:
             raise ToolError(
                 f"Upstream API returned 404 for {url} - check that the "
-                "station UUID and parameter shortname are valid."
+                "station UUID and parameter shortname are valid.",
+                log_level=log_level,
             ) from exc
-        raise ToolError(f"Upstream API returned HTTP {status} for {url}.") from exc
+        raise ToolError(
+            f"Upstream API returned HTTP {status} for {url}.", log_level=log_level
+        ) from exc
     except httpx2.TimeoutException as exc:
         logger.warning("GET %s timed out", url)
         raise ToolError(

@@ -7,7 +7,6 @@ from statistics import fmean
 
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
-from fastmcp.exceptions import ToolError
 from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from pydantic import AwareDatetime
@@ -16,6 +15,7 @@ from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.constraints import Hours, RecentCount, Resolution, StationIds
+from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.mapping import (
     characteristic_value,
     current_measurement,
@@ -285,22 +285,24 @@ def _window_start(
     Rejects a window that mixes hours and start or that the API cannot serve.
     """
     if hours is not None and start is not None:
-        raise ToolError("Pass either hours or start, not both.")
+        raise caller_error("Pass either hours or start, not both.")
     if start is None:
         if end is not None:
-            raise ToolError("end needs start; for the last N hours, pass hours alone.")
+            raise caller_error(
+                "end needs start; for the last N hours, pass hours alone."
+            )
         return timedelta(hours=hours or DEFAULT_HOURS)
     now = datetime.now(UTC)
     end = end or now
     if start >= end:
-        raise ToolError("start must lie before end (default: now).")
+        raise caller_error("start must lie before end (default: now).")
     if start < now - MAX_WINDOW:
-        raise ToolError(
+        raise caller_error(
             f"start lies more than {MAX_WINDOW.days} days back; the official API "
             "keeps measurements for a little over 31 days."
         )
     if end - start > MAX_WINDOW:
-        raise ToolError(
+        raise caller_error(
             f"start and end may lie at most {HISTORY_MINUTES // 60} hours apart."
         )
     return start
@@ -328,7 +330,7 @@ def _station_timeseries(station: dict, parameter: str) -> dict:
         if ts.get("shortname") == parameter:
             return ts
     available = ", ".join(sorted(str(ts.get("shortname")) for ts in timeseries))
-    raise ToolError(
+    raise caller_error(
         f"Station {station.get('uuid')} has no parameter {parameter!r}; "
         f"it has {available or 'none'}."
     )

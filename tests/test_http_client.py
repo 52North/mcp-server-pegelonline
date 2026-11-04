@@ -1,8 +1,9 @@
-"""Tests for the shared HTTP client: identification, connection retries and PNGs.
+"""Tests for the shared HTTP client: identification, retries, log levels and PNGs.
 
 The server's own version, which clients see, is checked here as well.
 """
 
+import logging
 import tomllib
 from pathlib import Path
 
@@ -99,6 +100,36 @@ async def test_get_png_shares_retries_and_errors(respx_mock):
     with pytest.raises(ToolError, match="404.*check that the station UUID"):
         await get_png(CHART_URL)
     assert route.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("mock", "log_level"),
+    [
+        # Caused by the caller's input, e.g. an unknown station or parameter
+        ({"return_value": httpx2.Response(404)}, logging.WARNING),
+        ({"return_value": httpx2.Response(400)}, logging.WARNING),
+        # Failures the operators of this server have to look into
+        ({"return_value": httpx2.Response(429)}, logging.ERROR),
+        ({"return_value": httpx2.Response(503)}, logging.ERROR),
+        ({"side_effect": httpx2.ReadTimeout("read timed out")}, logging.ERROR),
+        ({"side_effect": httpx2.ConnectError("connection refused")}, logging.ERROR),
+        (
+            {"return_value": httpx2.Response(200, html="<html>Wartungsarbeiten</html>")},
+            logging.ERROR,
+        ),
+    ],
+    ids=[
+        "not-found", "bad-request", "rate-limited", "server-error", "read-timeout",
+        "connection-error", "no-json",
+    ],
+)
+async def test_log_level_of_upstream_failures(respx_mock, mock, log_level):
+    # FastMCP logs a ToolError at its log level
+    respx_mock.get(STATION_URL).mock(**mock)
+
+    with pytest.raises(ToolError) as exc:
+        await get_json(STATION_URL)
+    assert exc.value.log_level == log_level
 
 
 async def test_server_reports_its_version(client):
