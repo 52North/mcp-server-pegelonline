@@ -1,34 +1,15 @@
-"""Resources: water bodies, states, agencies and catchment areas, the stations
-per state, the map UI and the chart UI."""
+"""Resources: water bodies, states, agencies and catchment areas, and the
+stations per state."""
 
 import logging
-from pathlib import Path
 
 from fastmcp import FastMCP
-from fastmcp.apps import UI_MIME_TYPE, AppConfig, ResourceCSP
 
 from pegelonline_mcp import client
 from pegelonline_mcp.cache import cached
 from pegelonline_mcp.mapping import water_name
 
 logger = logging.getLogger(__name__)
-
-MAP_UI_URI = "ui://pegelonline-dict/stations-map"
-CHART_UI_URI = "ui://pegelonline-dict/measurements-chart"
-
-
-def stations_map_ui() -> str:
-    """Leaflet map UI rendered inline for the show_stations_map tool."""
-    logger.info("stations_map_ui: serving Leaflet map resource %s", MAP_UI_URI)
-    return (Path(__file__).parent / "static" / "stations_map.html").read_text(encoding="utf-8")
-
-
-def measurements_chart_ui() -> str:
-    """Chart UI rendered inline for the show_measurements_chart tool."""
-    logger.info("measurements_chart_ui: serving chart resource %s", CHART_UI_URI)
-    return (Path(__file__).parent / "static" / "measurements_chart.html").read_text(
-        encoding="utf-8"
-    )
 
 
 @cached("water-bodies")
@@ -40,17 +21,9 @@ async def list_water_bodies() -> str:
     return result
 
 
-@cached("stations")
-async def all_stations() -> list[dict]:
-    """Every station of the dict API, shared by the lists of their field values."""
-    stations = await client.search()
-    logger.info("all stations: fetched and cached %d stations", len(stations))
-    return stations
-
-
 async def _distinct(field: str) -> list[str]:
     """Sorted distinct values of a station field; stations without it are skipped."""
-    return sorted({s[field] for s in await all_stations() if s.get(field)})
+    return sorted({s[field] for s in await client.all_stations() if s.get(field)})
 
 
 async def list_states() -> str:
@@ -115,27 +88,6 @@ def _station_line(station: dict) -> str:
 
 def register(mcp: FastMCP) -> None:
     """Register the resources on the server."""
-    mcp.resource(
-        MAP_UI_URI,
-        mime_type=UI_MIME_TYPE,
-        app=AppConfig(
-            csp=ResourceCSP(
-                resource_domains=[
-                    "https://unpkg.com",
-                    "https://tile.openstreetmap.org",
-                ],
-            ),
-            prefers_border=True,
-        ),
-    )(stations_map_ui)
-    mcp.resource(
-        CHART_UI_URI,
-        mime_type=UI_MIME_TYPE,
-        app=AppConfig(
-            csp=ResourceCSP(resource_domains=["https://unpkg.com"]),
-            prefers_border=True,
-        ),
-    )(measurements_chart_ui)
     mcp.resource("water-bodies://list")(list_water_bodies)
     mcp.resource("states://list")(list_states)
     mcp.resource("states://{state}/stations")(list_stations_in_state)

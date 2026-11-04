@@ -6,7 +6,13 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from pegelonline_mcp import __version__, resources, tools_measurements, tools_stations
+from pegelonline_mcp import (
+    __version__,
+    resources,
+    tools_measurements,
+    tools_stations,
+    ui,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +76,8 @@ mcp = FastMCP("Pegelonline", instructions=INSTRUCTIONS, version=__version__)
 
 tools_stations.register(mcp)
 tools_measurements.register(mcp)
+# Before the other resources, which keeps the order of resources/list
+ui.register(mcp)
 resources.register(mcp)
 
 

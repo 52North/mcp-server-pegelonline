@@ -6,7 +6,7 @@ import httpx2
 import pytest
 
 from conftest import SEARCH_URL, WATERS_URL, all_stations, load_fixture
-from pegelonline_mcp.resources import CHART_UI_URI, MAP_UI_URI
+from pegelonline_mcp.ui import CHART_UI_URI, MAP_UI_URI
 
 
 async def read_text(client, uri: str) -> str:

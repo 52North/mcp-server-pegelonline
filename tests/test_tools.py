@@ -32,8 +32,8 @@ from conftest import (
 from pegelonline_mcp import tools_measurements
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
-from pegelonline_mcp.resources import CHART_UI_URI
 from pegelonline_mcp.tools_measurements import MAX_RAW_SLOTS, MAX_RESULT_CHARS
+from pegelonline_mcp.ui import CHART_UI_URI
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}

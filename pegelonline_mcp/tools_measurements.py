@@ -37,7 +37,7 @@ from pegelonline_mcp.models import (
     RecentMeasurements,
     StationComparison,
 )
-from pegelonline_mcp.resources import CHART_UI_URI
+from pegelonline_mcp.ui import CHART_UI_URI
 
 logger = logging.getLogger(__name__)
 

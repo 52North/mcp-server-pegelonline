@@ -34,7 +34,7 @@ from pegelonline_mcp.models import (
     StationParameter,
     StationsMap,
 )
-from pegelonline_mcp.resources import MAP_UI_URI, all_stations
+from pegelonline_mcp.ui import MAP_UI_URI
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ async def list_search_values(field: SearchField) -> SearchValues:
     logger.info("list_search_values: field=%s", field)
     stations: Counter[str] = Counter()
     longnames: defaultdict[str, set[str]] = defaultdict(set)
-    for s in await all_stations():
+    for s in await client.all_stations():
         pairs = search_values(s, field)
         # A station with two timeseries of one parameter counts once
         stations.update({value for value, _ in pairs})

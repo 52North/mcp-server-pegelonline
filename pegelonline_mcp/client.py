@@ -5,6 +5,7 @@ import math
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
+from pegelonline_mcp.cache import cached
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.http_client import get_json, get_png
@@ -31,6 +32,15 @@ async def search(params: dict | None = None) -> list[dict]:
     """Stations matching the dict API search filters."""
     data = await get_json(f"{BASE_URL}/search", params=params)
     return data.get("stations", [])
+
+
+@cached("stations")
+async def all_stations() -> list[dict]:
+    """Every station of the dict API, shared by the lists of their field
+    values and list_search_values."""
+    stations = await search()
+    logger.info("all stations: fetched and cached %d stations", len(stations))
+    return stations
 
 
 def _segment(value: str) -> str:
