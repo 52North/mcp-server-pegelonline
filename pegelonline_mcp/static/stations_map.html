@@ -42,6 +42,25 @@
     }[c]));
   }
 
+  // Bounds to fit until the user moves the map. The host may size the
+  // frame only after the data arrives, and Leaflet fits a map of 0 × 0
+  // at its largest zoom, so each new size fits them again.
+  let fitTarget = null;
+  let userMoved = false;
+
+  function fitMap() {
+    map.invalidateSize();
+    const size = map.getSize();
+    if (fitTarget && !userMoved && size.x > 0 && size.y > 0) {
+      map.fitBounds(fitTarget, { padding: [20, 20] });
+    }
+  }
+
+  for (const type of ["pointerdown", "wheel", "keydown"]) {
+    map.getContainer().addEventListener(type, () => { userMoved = true; });
+  }
+  new ResizeObserver(fitMap).observe(map.getContainer());
+
   function render(data) {
     dataLayer.clearLayers();
     const center = data.center || {};
@@ -78,10 +97,14 @@
     }
 
     if (circle) {
-      map.fitBounds(circle.getBounds(), { padding: [20, 20] });
+      fitTarget = circle.getBounds();
     } else if (stations.length) {
-      map.fitBounds(L.latLngBounds(stations.map(s => [s.latitude, s.longitude])), { padding: [20, 20] });
+      fitTarget = L.latLngBounds(stations.map(s => [s.latitude, s.longitude]));
+    } else {
+      fitTarget = null;
     }
+    userMoved = false;
+    fitMap();
 
     const shown = stations.length;
     const total = data.total_matches ?? shown;
@@ -110,6 +133,12 @@
     if (event.source !== window.parent) return;
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
+
+    // A request of the host, e.g. ui/resource-teardown or ping
+    if (msg.method !== undefined && msg.id !== undefined) {
+      window.parent.postMessage({ jsonrpc: "2.0", id: msg.id, result: {} }, "*");
+      return;
+    }
 
     if (msg.id === INIT_ID && msg.result) {
       window.parent.postMessage(
