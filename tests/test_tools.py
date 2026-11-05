@@ -879,22 +879,11 @@ async def test_get_measurements_chart_requests_window(client, respx_mock, window
     assert dict(route.calls.last.request.url.params) == params | CHART_SIZE
 
 
-@pytest.mark.parametrize(
-    ("response", "message"),
-    [
-        (
-            httpx2.Response(404, json={"status": 404, "message": "Timeseries does not exist."}),
-            "check that the station UUID",
-        ),
-        # E.g. a maintenance page delivered with status 200
-        (httpx2.Response(200, html="<html>Wartungsarbeiten</html>"), "no PNG image.*text/html"),
-    ],
-    ids=["unknown-parameter", "no-png"],
-)
-async def test_get_measurements_chart_upstream_errors(client, respx_mock, response, message):
-    respx_mock.get(CHART_URL).mock(return_value=response)
+async def test_get_measurements_chart_rejects_other_content(client, respx_mock):
+    # E.g. a maintenance page delivered with status 200
+    respx_mock.get(CHART_URL).respond(200, html="<html>Wartungsarbeiten</html>")
 
-    with pytest.raises(ToolError, match=message):
+    with pytest.raises(ToolError, match="no PNG image.*text/html"):
         await client.call_tool("get_measurements_chart", KOELN_W)
 
 
@@ -1081,11 +1070,34 @@ async def test_chart_tools_are_linked_to_the_ui(client):
     assert tools["get_chart_values"].meta["ui"] == {"visibility": ["app"]}
 
 
-async def test_upstream_404_raises_tool_error(client, respx_mock):
-    respx_mock.get(STATION_URL).respond(404)
+async def test_unknown_station_raises_tool_error(client, respx_mock):
+    respx_mock.get(STATION_URL).respond(
+        404, json={"status": 404, "message": "Station does not exist."}
+    )
 
-    with pytest.raises(ToolError, match="404"):
+    with pytest.raises(ToolError, match=f"Unknown station '{KOELN_UUID}'"):
         await client.call_tool("get_station_info", {"uuid": KOELN_UUID})
+
+
+@pytest.mark.parametrize(
+    "tool",
+    [
+        "get_characteristic_values",
+        "get_recent_measurements",
+        "get_measurement_history",
+        "get_measurements_chart",
+    ],
+)
+async def test_unknown_parameter_names_those_of_the_station(client, respx_mock, tool):
+    # The API answers with the same 404 for the metadata and the chart of an
+    # unknown station or parameter; the station tells them apart
+    respx_mock.get(
+        url__startswith=f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/LT"
+    ).respond(404, json={"status": 404, "message": "Timeseries does not exist."})
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+
+    with pytest.raises(ToolError, match="has no parameter 'LT'; it has Q, W"):
+        await client.call_tool(tool, {"uuid": KOELN_UUID, "parameter": "LT"})
 
 
 async def test_upstream_non_json_raises_tool_error(client, respx_mock):

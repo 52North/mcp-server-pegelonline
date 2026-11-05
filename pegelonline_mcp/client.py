@@ -8,7 +8,8 @@ from urllib.parse import quote
 from pegelonline_mcp.cache import cached
 from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.errors import caller_error
-from pegelonline_mcp.http_client import get_json, get_png
+from pegelonline_mcp.http_client import NotFoundError, get_json, get_png
+from pegelonline_mcp.mapping import station_timeseries
 from pegelonline_mcp.models import Measurement
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,10 @@ async def fetch_station(uuid: str, current: bool = False) -> dict:
     if current:
         params["includeCurrentMeasurement"] = "true"
     url = f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}.json"
-    return await get_json(url, params=params)
+    try:
+        return await get_json(url, params=params)
+    except NotFoundError:
+        raise caller_error(f"Unknown station {uuid!r}.") from None
 
 
 async def fetch_stations_current(ids: list[str], parameter: str) -> list[dict]:
@@ -90,13 +94,25 @@ def _measurements_url(uuid: str, parameter: str) -> str:
     return f"{_timeseries_url(uuid, parameter)}/measurements.json"
 
 
+async def _explain_not_found(uuid: str, parameter: str) -> None:
+    """After a 404 on a station parameter, raise an error that says what is
+    missing: the station, or the parameter, naming those the station has.
+
+    The API answers both with the same 404, so this asks for the station.
+    If it has the parameter after all, this returns, and the caller
+    re-raises the 404.
+    """
+    station_timeseries(await fetch_station(uuid), parameter)
+
+
 async def fetch_timeseries(
     uuid: str, parameter: str, current: bool = False, characteristic_values: bool = False
 ) -> dict:
     """Metadata of a station parameter: unit, interval, gauge zero and comment.
 
     Optionally with the current measurement and the characteristic values
-    (e.g., MNW, MHW, HSW).
+    (e.g., MNW, MHW, HSW). An unknown station or parameter raises an error
+    that says which, see ``_explain_not_found``.
     """
     params: dict[str, str] = {}
     if current:
@@ -104,7 +120,11 @@ async def fetch_timeseries(
     if characteristic_values:
         params["includeCharacteristicValues"] = "true"
     url = f"{_timeseries_url(uuid, parameter)}.json"
-    return await get_json(url, params=params or None)
+    try:
+        return await get_json(url, params=params or None)
+    except NotFoundError:
+        await _explain_not_found(uuid, parameter)
+        raise
 
 
 async def fetch_measurements(
@@ -168,14 +188,22 @@ async def fetch_measurements_since(
 async def fetch_measurements_chart(
     uuid: str, parameter: str, start: datetime | timedelta, end: datetime | None = None
 ) -> bytes:
-    """PNG line chart of a station parameter in a time window, see ``_window_params``."""
+    """PNG line chart of a station parameter in a time window, see ``_window_params``.
+
+    An unknown station or parameter raises an error that says which, see
+    ``_explain_not_found``.
+    """
     url = f"{_timeseries_url(uuid, parameter)}/measurements.png"
     params = {
         **_window_params(start, end),
         "width": str(CHART_WIDTH),
         "height": str(CHART_HEIGHT),
     }
-    return await get_png(url, params=params)
+    try:
+        return await get_png(url, params=params)
+    except NotFoundError:
+        await _explain_not_found(uuid, parameter)
+        raise
 
 
 async def fetch_waters() -> list[dict]:

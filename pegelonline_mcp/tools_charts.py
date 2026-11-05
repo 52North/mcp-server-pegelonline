@@ -12,9 +12,8 @@ from pydantic import AwareDatetime
 from pegelonline_mcp import client, series, windows
 from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.constraints import Hours
-from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.mapping import (
-    normalize_timeseries,
+    station_timeseries,
     timeseries_comment,
     water_name,
 )
@@ -42,24 +41,6 @@ def _client_renders_apps() -> tuple[bool, str | None]:
         return False, None
     name = params.client_info.name if params is not None else None
     return ctx.client_supports_extension(UI_EXTENSION_ID), name
-
-
-def _station_timeseries(station: dict, parameter: str) -> dict:
-    """The timeseries of ``parameter`` among a station's timeseries.
-
-    Like the API, the short name matches regardless of case.
-    """
-    timeseries = normalize_timeseries(station)
-    wanted = parameter.casefold()
-    for ts in timeseries:
-        shortname = ts.get("shortname")
-        if isinstance(shortname, str) and shortname.casefold() == wanted:
-            return ts
-    available = ", ".join(sorted(str(ts.get("shortname")) for ts in timeseries))
-    raise caller_error(
-        f"Station {station.get('uuid')} has no parameter {parameter!r}; "
-        f"it has {available or 'none'}."
-    )
 
 
 async def get_measurements_chart(
@@ -107,8 +88,8 @@ async def get_measurements_chart(
         uuid, parameter, hours, start, end,
     )
     since = windows.window_start(hours, start, end)
-    # No metadata first: the chart request itself fails with a single 404
-    # for an unknown station or parameter
+    # No metadata first: only an unknown station or parameter costs a
+    # second request, to tell which
     png = await client.fetch_measurements_chart(uuid, parameter, since, end)
     logger.info(
         "get_measurements_chart: uuid=%s parameter=%s -> %d bytes",
@@ -160,7 +141,7 @@ async def show_measurements_chart(
     )
     window_start, window_end = windows.absolute_window(hours, start, end)
     station = await client.fetch_station(uuid)
-    timeseries = _station_timeseries(station, parameter)
+    timeseries = station_timeseries(station, parameter)
     # The chart UI shows it and passes it on, so "w" becomes "W"
     shortname = timeseries["shortname"]
     measurements = await client.fetch_measurements_since(

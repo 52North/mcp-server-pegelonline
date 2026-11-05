@@ -19,6 +19,7 @@ from conftest import (
     load_fixture,
 )
 from pegelonline_mcp import client
+from pegelonline_mcp.config import OFFICIAL_API_URL
 
 CEST = timezone(timedelta(hours=2))
 
@@ -117,6 +118,78 @@ async def test_dot_only_segments_are_rejected(respx_mock, call):
         await call()
     # The caller's mistake, not a failure of the server
     assert exc.value.log_level == logging.WARNING
+
+
+# The official API's 404 for the timeseries of an unknown station or parameter
+TIMESERIES_404 = httpx2.Response(
+    404, json={"status": 404, "message": "Timeseries does not exist."}
+)
+UNKNOWN_UUID = "00000000-0000-0000-0000-000000000000"
+# The requests for a station parameter, which answer both cases alike
+PARAMETER_CALLS = [
+    pytest.param(
+        lambda uuid, parameter: client.fetch_timeseries(uuid, parameter),
+        id="timeseries",
+    ),
+    pytest.param(
+        lambda uuid, parameter: client.fetch_measurements_chart(
+            uuid, parameter, timedelta(hours=24)
+        ),
+        id="chart",
+    ),
+]
+
+
+def parameter_urls(uuid: str, parameter: str) -> str:
+    """Start of the URLs of a station parameter: its metadata and its chart."""
+    return f"{OFFICIAL_API_URL}/stations/{uuid}/{parameter}"
+
+
+@pytest.mark.parametrize("call", PARAMETER_CALLS)
+async def test_unknown_parameter_names_those_of_the_station(respx_mock, call):
+    respx_mock.get(url__startswith=parameter_urls(KOELN_UUID, "LT")).mock(
+        return_value=TIMESERIES_404
+    )
+    station = respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+
+    with pytest.raises(
+        ToolError, match=f"Station {KOELN_UUID} has no parameter 'LT'; it has Q, W"
+    ) as exc:
+        await call(KOELN_UUID, "LT")
+    assert station.called
+    assert exc.value.log_level == logging.WARNING
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda uuid, parameter: client.fetch_station(uuid), id="station"),
+        *PARAMETER_CALLS,
+    ],
+)
+async def test_unknown_station(respx_mock, call):
+    respx_mock.get(url__startswith=parameter_urls(UNKNOWN_UUID, "W")).mock(
+        return_value=TIMESERIES_404
+    )
+    respx_mock.get(f"{OFFICIAL_API_URL}/stations/{UNKNOWN_UUID}.json").respond(
+        404, json={"status": 404, "message": "Station does not exist."}
+    )
+
+    with pytest.raises(ToolError, match=f"Unknown station '{UNKNOWN_UUID}'") as exc:
+        await call(UNKNOWN_UUID, "W")
+    assert exc.value.log_level == logging.WARNING
+
+
+@pytest.mark.parametrize("call", PARAMETER_CALLS)
+async def test_404_stays_if_the_station_has_the_parameter(respx_mock, call):
+    # E.g. a timeseries that disappears between the two requests
+    respx_mock.get(url__startswith=parameter_urls(KOELN_UUID, "W")).mock(
+        return_value=TIMESERIES_404
+    )
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+
+    with pytest.raises(ToolError, match="404.*check that the station UUID"):
+        await call(KOELN_UUID, "W")
 
 
 async def test_fetch_measurements_most_recent_first(respx_mock):

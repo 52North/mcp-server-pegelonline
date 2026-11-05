@@ -174,6 +174,12 @@ some stations lack e.g. coordinates or a district. `get_measurements_chart` retu
 MCP image content (`image/png`) instead, `get_chart_values` its values in
 `structuredContent` without a schema.
 
+An unknown station or parameter fails with an error that says which, and a missing
+parameter's error names those the station has. The official API answers both with
+the same 404 for a station parameter, so the tools that request one directly
+(`get_characteristic_values`, `get_recent_measurements`, `get_measurement_history`,
+`get_measurements_chart`) then ask for the station in a second request.
+
 ### `search_stations`
 
 Searches for stations with the following optional parameters:
@@ -337,8 +343,8 @@ timeseries' unit with a decimal comma, the x-axis German local time. A span with
 values gives an empty grid, not an error. Some gauges add a dashed line, e.g. a
 forecast; the measured values are the solid line.
 
-The tool sends a single request, so an unknown station or parameter fails with the
-usual 404 hint, and a response that is not `image/png` becomes an error.
+The tool sends a single request; only an unknown station or parameter costs a
+second one, to say which. A response that is not `image/png` becomes an error.
 
 ### `show_measurements_chart`
 

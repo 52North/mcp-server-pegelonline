@@ -232,7 +232,8 @@ async def get_recent_measurements(
         "get_recent_measurements: uuid=%s parameter=%s count=%d",
         uuid, parameter, count,
     )
-    # Fetched first, so an unknown parameter fails with a single 404
+    # Fetched first: an unknown station or parameter fails here, with an
+    # error that says which
     timeseries = await client.fetch_timeseries(uuid, parameter)
     recent = await client.fetch_measurements(
         uuid, parameter, count, timeseries.get("equidistance")
@@ -306,7 +307,8 @@ async def get_measurement_history(
         uuid, parameter, hours, start, end, resolution,
     )
     since = windows.window_start(hours, start, end)
-    # Fetched first, so an unknown parameter fails with a single 404
+    # Fetched first: an unknown station or parameter fails here, with an
+    # error that says which
     timeseries = await client.fetch_timeseries(uuid, parameter)
     measurements = await client.fetch_measurements_since(uuid, parameter, since, end)
     points = series.points(measurements)

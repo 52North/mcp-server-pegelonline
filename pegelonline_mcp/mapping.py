@@ -1,5 +1,6 @@
 """Mapping helpers that turn upstream station JSON into tool responses."""
 
+from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.models import (
     CharacteristicValue,
     CurrentMeasurement,
@@ -21,6 +22,25 @@ def normalize_timeseries(station: dict) -> list[dict]:
     if not isinstance(timeseries, list):
         return []
     return [ts for ts in timeseries if isinstance(ts, dict)]
+
+
+def station_timeseries(station: dict, parameter: str) -> dict:
+    """The timeseries of ``parameter`` among a station's timeseries.
+
+    Like the API, the short name matches regardless of case. Without it,
+    the error names the parameters the station has.
+    """
+    timeseries = normalize_timeseries(station)
+    wanted = parameter.casefold()
+    for ts in timeseries:
+        shortname = ts.get("shortname")
+        if isinstance(shortname, str) and shortname.casefold() == wanted:
+            return ts
+    available = ", ".join(sorted(str(ts.get("shortname")) for ts in timeseries))
+    raise caller_error(
+        f"Station {station.get('uuid')} has no parameter {parameter!r}; "
+        f"it has {available or 'none'}."
+    )
 
 
 def water_name(station: dict) -> str | None:

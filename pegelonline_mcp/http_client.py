@@ -33,6 +33,10 @@ http_client = httpx2.AsyncClient(
 )
 
 
+class NotFoundError(ToolError):
+    """HTTP 404 from upstream: an unknown station or parameter."""
+
+
 async def _get(url: str, params: dict | None) -> httpx2.Response:
     """GET that retries failed connection attempts with a growing delay."""
     attempt = 1
@@ -68,7 +72,7 @@ async def _get_checked(url: str, params: dict | None) -> httpx2.Response:
             logging.WARNING if status in CALLER_ERROR_STATUSES else logging.ERROR
         )
         if status == 404:
-            raise ToolError(
+            raise NotFoundError(
                 f"Upstream API returned 404 for {url} - check that the "
                 "station UUID and parameter shortname are valid.",
                 log_level=log_level,
