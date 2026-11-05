@@ -9,38 +9,204 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; }
-  #map { position: absolute; inset: 0; }
-  #status {
-    position: absolute; top: 10px; right: 10px; z-index: 1000;
-    background: rgba(255, 255, 255, 0.9); border-radius: 6px;
-    padding: 6px 10px; font: 13px/1.4 system-ui, sans-serif;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  /* The states are a polarity around normal: two poles of the diverging
+     pair (red below MNW, blue above MHW) and a neutral gray between them.
+     Unrated stations are hollow rings, so they never pass for normal. */
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --border: rgba(11, 11, 11, 0.10);
+    --low: #e34948;
+    --normal: #898781;
+    --high: #2a78d6;
+    --tiles: none;
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface: #1a1a19;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --border: rgba(255, 255, 255, 0.10);
+      --low: #e66767;
+      --high: #3987e5;
+      --tiles: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --border: rgba(255, 255, 255, 0.10);
+    --low: #e66767;
+    --high: #3987e5;
+    --tiles: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+  }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--surface); }
+  #map { position: absolute; inset: 0; background: var(--surface); }
+  .leaflet-container { font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  /* OpenStreetMap has no dark tiles; inverting keeps water blue and land dark */
+  .leaflet-tile-pane { filter: var(--tiles); }
+  #legend {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font: 12px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); max-width: 240px;
+    overflow-wrap: anywhere; /* error texts carry long URLs */
+  }
+  #legend .title { font-size: 13px; font-weight: 600; }
+  #legend .row { display: flex; align-items: center; gap: 6px; }
+  #legend .count { margin-left: auto; padding-left: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  #legend svg { flex: none; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-tooltip {
+    background: var(--surface); color: var(--ink);
+  }
+  .leaflet-tooltip { border-color: var(--border); }
+  .leaflet-tooltip-top::before { border-top-color: var(--surface); }
+  .leaflet-tooltip-bottom::before { border-bottom-color: var(--surface); }
+  .leaflet-tooltip-left::before { border-left-color: var(--surface); }
+  .leaflet-tooltip-right::before { border-right-color: var(--surface); }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--ink-2); }
+  .leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--ink); border-bottom-color: var(--border); }
+  .leaflet-container .leaflet-control-attribution { background: var(--surface); color: var(--ink-2); opacity: 0.85; }
+  .leaflet-container .leaflet-control-attribution a { color: inherit; }
+  .popup .meta { color: var(--ink-2); }
+  .popup .level { margin: 6px 0; }
+  .popup .uuid { color: var(--muted); font-size: 11px; word-break: break-all; }
+  .center-icon { color: var(--ink); font-size: 16px; line-height: 16px; text-align: center; }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div id="status">Waiting for station data…</div>
+<div id="legend"></div>
 <script>
   "use strict";
 
   const MAP_HEIGHT_PX = 480; // requested iframe height via ui/notifications/size-changed
+  const REQUEST_TIMEOUT_MS = 60000;
+  const PROTOCOL_VERSION = "2026-01-26";
+  // Notes that earn a station a strong ring
+  const NOTABLE = ["below NNW", "above HHW", "above HSW"];
+  // Legend rows, in this order
+  const CATEGORIES = ["low", "normal", "high", "unrated", "tidal", "none"];
 
-  const map = L.map("map").setView([51.2, 9.4], 6); // Germany until data arrives
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
+  const TEXT = {
+    en: {
+      waiting: "Waiting for station data…",
+      noData: "The tool returned no map data.",
+      cancelled: "The tool call was cancelled.",
+      failed: "The map could not start: ",
+      timeout: "no answer within 60 seconds",
+      center: "Search center",
+      stations: n => `${n} station${n === 1 ? "" : "s"}`,
+      truncated: (n, total) => `${n} of ${total} stations (truncated)`,
+      categories: {
+        low: "Low (below MNW)",
+        normal: "Normal",
+        high: "High (above MHW)",
+        unrated: "Not rated",
+        tidal: "Tidal gauge",
+        none: "No water level",
+      },
+      notable: "Record or above HSW",
+      states: {
+        low: "low", normal: "normal", high: "high", unknown: "not rated",
+        commented: "disturbed, see the comment", "out-dated": "out of date",
+      },
+      notes: {
+        "below NNW": "below the record low NNW",
+        "above HHW": "above the record high HHW",
+        "above HSW": "above the highest navigable level HSW",
+        tidal: "tidal gauge: rises and falls with every tide",
+      },
+      waterLevel: "Water level",
+      noLevel: "No current water level",
+      distance: d => `${d} km from the center`,
+      parameters: "Parameters",
+    },
+    de: {
+      waiting: "Warte auf die Pegeldaten…",
+      noData: "Das Tool hat keine Kartendaten geliefert.",
+      cancelled: "Der Tool-Aufruf wurde abgebrochen.",
+      failed: "Die Karte konnte nicht starten: ",
+      timeout: "keine Antwort innerhalb von 60 Sekunden",
+      center: "Suchmittelpunkt",
+      stations: n => `${n} Pegel`,
+      truncated: (n, total) => `${n} von ${total} Pegeln (gekürzt)`,
+      categories: {
+        low: "Niedrig (unter MNW)",
+        normal: "Normal",
+        high: "Hoch (über MHW)",
+        unrated: "Ohne Einstufung",
+        tidal: "Tidepegel",
+        none: "Ohne Wasserstand",
+      },
+      notable: "Rekordwert oder über HSW",
+      states: {
+        low: "niedrig", normal: "normal", high: "hoch", unknown: "ohne Einstufung",
+        commented: "gestört, siehe Kommentar", "out-dated": "veraltet",
+      },
+      notes: {
+        "below NNW": "unter dem Rekordtief NNW",
+        "above HHW": "über dem Rekordhoch HHW",
+        "above HSW": "über dem höchsten Schifffahrtswasserstand HSW",
+        tidal: "Tidepegel: steigt und fällt mit jeder Tide",
+      },
+      waterLevel: "Wasserstand",
+      noLevel: "Kein aktueller Wasserstand",
+      distance: d => `${d} km vom Mittelpunkt`,
+      parameters: "Parameter",
+    },
+  };
 
-  const dataLayer = L.layerGroup().addTo(map);
-  const statusEl = document.getElementById("status");
+  const state = {
+    locale: validLocale(navigator.language),
+    data: null, // structuredContent of show_stations_map
+    message: "waiting", // a key of TEXT, or a text of its own
+    detail: "",
+  };
+
+  const $ = id => document.getElementById(id);
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function validLocale(locale) {
+    try {
+      return Intl.getCanonicalLocales(locale)[0] || "en";
+    } catch {
+      return "en";
+    }
+  }
+
+  function text() {
+    return TEXT[state.locale.toLowerCase().startsWith("de") ? "de" : "en"];
+  }
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat(state.locale, { maximumFractionDigits: 2 }).format(value);
+  }
 
   function escapeHtml(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
   }
+
+  // --- Map ---
+
+  const map = L.map("map").setView([51.2, 9.4], 6); // Germany until data arrives
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  const dataLayer = L.layerGroup().addTo(map);
+  // The stations lie above the radius circle and the center marker (600),
+  // below tooltips (650) and popups (700)
+  map.createPane("stations").style.zIndex = 620;
 
   // Bounds to fit until the user moves the map. The host may size the
   // frame only after the data arrives, and Leaflet fits a map of 0 × 0
@@ -61,43 +227,144 @@
   }
   new ResizeObserver(fitMap).observe(map.getContainer());
 
-  function render(data) {
+  function category(level) {
+    if (!level) return "none";
+    if ((level.notes || []).includes("tidal")) return "tidal";
+    return ["low", "normal", "high"].includes(level.state_mnw_mhw) ? level.state_mnw_mhw : "unrated";
+  }
+
+  function isNotable(level) {
+    return Boolean(level) && (level.notes || []).some(note => NOTABLE.includes(note));
+  }
+
+  // Filled markers wear a surface ring that parts them from the tiles and
+  // from each other; notable ones an ink ring instead
+  function markerStyle(cat, notable) {
+    const fill = { low: "--low", normal: "--normal", high: "--high" }[cat];
+    return {
+      radius: cat === "none" ? 5 : 8,
+      fillColor: css(fill || "--surface"),
+      fillOpacity: fill ? 1 : 0.85,
+      color: notable ? css("--ink") : css(fill ? "--surface" : cat === "none" ? "--muted" : "--ink-2"),
+      weight: notable ? 3 : 2,
+      dashArray: cat === "tidal" ? "3 3" : null,
+    };
+  }
+
+  function drawRank(cat, notable) {
+    const rank = { none: 0, unrated: 1, tidal: 1, normal: 2, low: 3, high: 3 }[cat];
+    return rank + (notable ? 10 : 0);
+  }
+
+  function swatch(style) {
+    const dash = style.dashArray ? ' stroke-dasharray="2 2"' : "";
+    return `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">` +
+      `<circle cx="7" cy="7" r="${style.radius * 0.6}" fill="${style.fillColor}"` +
+      ` fill-opacity="${style.fillOpacity}" stroke="${style.color}"` +
+      ` stroke-width="${Math.min(style.weight, 2.5)}"${dash}/></svg>`;
+  }
+
+  function levelHtml(level) {
+    if (!level) return `<div class="level meta">${escapeHtml(text().noLevel)}</div>`;
+    const value = level.value == null ? "–" : `${formatNumber(level.value)} ${level.unit || ""}`.trim();
+    const stateName = text().states[level.state_mnw_mhw] || level.state_mnw_mhw || "";
+    const notes = (level.notes || []).map(note => text().notes[note] || note);
+    return `<div class="level">${escapeHtml(text().waterLevel)}: <b>${escapeHtml(value)}</b>` +
+      (stateName ? ` · ${escapeHtml(stateName)}` : "") +
+      (notes.length ? `<br><span class="meta">${escapeHtml(notes.join(", "))}</span>` : "") +
+      `</div>`;
+  }
+
+  function popupHtml(s) {
+    const place = [s.water, s.distance_km != null ? text().distance(formatNumber(s.distance_km)) : null]
+      .filter(Boolean).join(" · ");
+    const parameters = (s.parameters || []).map(p => p.shortname).filter(Boolean).join(", ");
+    return `<div class="popup"><b>${escapeHtml(s.longname || s.shortname)}</b>` +
+      (place ? `<br><span class="meta">${escapeHtml(place)}</span>` : "") +
+      levelHtml(s.water_level) +
+      (parameters ? `<div class="meta">${escapeHtml(text().parameters)}: ${escapeHtml(parameters)}</div>` : "") +
+      `<div class="uuid">${escapeHtml(s.uuid || "")}</div></div>`;
+  }
+
+  function tooltipText(s) {
+    const level = s.water_level;
+    const name = s.longname || s.shortname || "";
+    if (!level || level.value == null) return name;
+    return `${name} · ${formatNumber(level.value)} ${level.unit || ""}`.trim();
+  }
+
+  // Draws the stations of state.data in the current theme and language
+  function drawLayers() {
     dataLayer.clearLayers();
+    const data = state.data;
+    if (!data) return;
     const center = data.center || {};
     const radiusM = (data.radius_km || 0) * 1000;
-    const stations = data.stations || [];
 
-    let circle = null;
     if (typeof center.latitude === "number" && typeof center.longitude === "number") {
       L.marker([center.latitude, center.longitude], {
-        icon: L.divIcon({ className: "", html: "&#10133;", iconSize: [16, 16] }),
-        title: "Search center",
-      }).addTo(dataLayer).bindPopup("Search center");
+        icon: L.divIcon({ className: "center-icon", html: "&#10133;", iconSize: [16, 16] }),
+        title: text().center,
+      }).addTo(dataLayer).bindPopup(escapeHtml(text().center));
       if (radiusM > 0) {
-        circle = L.circle([center.latitude, center.longitude], {
-          radius: radiusM, color: "#0057b8", weight: 2, fillOpacity: 0.05,
+        L.circle([center.latitude, center.longitude], {
+          radius: radiusM, color: css("--ink-2"), weight: 1.5, dashArray: "6 4",
+          fillColor: css("--ink-2"), fillOpacity: 0.03, interactive: false,
         }).addTo(dataLayer);
       }
     }
 
-    for (const s of stations) {
+    const counts = Object.fromEntries(CATEGORIES.map(c => [c, 0]));
+    let notableCount = 0;
+    const markers = [];
+    for (const s of data.stations || []) {
       if (typeof s.latitude !== "number" || typeof s.longitude !== "number") continue;
-      const params = (s.parameters || [])
-        .map(p => `${escapeHtml(p.shortname)} &ndash; ${escapeHtml(p.longname)} (${escapeHtml(p.unit)})`)
-        .join("<br>");
-      L.marker([s.latitude, s.longitude]).addTo(dataLayer).bindPopup(
-        `<b>${escapeHtml(s.longname || s.shortname)}</b><br>` +
-        `${escapeHtml(s.water || "")}<br>` +
-        `${s.distance_km != null ? s.distance_km + " km" : ""}<br>` +
-        (params ? `<br><b>Parameters</b><br><small>${params}</small><br>` : "") +
-        (s.mqtttopic ? `<br><b>MQTT topic</b><br><code style="font-size:11px;word-break:break-all">${escapeHtml(s.mqtttopic)}</code><br>` : "") +
-        `<br><small>UUID: ${escapeHtml(s.uuid || "")}</small>`,
-        { maxWidth: 320 }
-      );
+      const cat = category(s.water_level);
+      const notable = isNotable(s.water_level);
+      counts[cat] += 1;
+      if (notable) notableCount += 1;
+      markers.push({ s, cat, notable, rank: drawRank(cat, notable) });
     }
+    // Later markers cover earlier ones, so the rated and notable come last
+    markers.sort((a, b) => a.rank - b.rank);
+    for (const { s, cat, notable } of markers) {
+      const style = markerStyle(cat, notable);
+      L.circleMarker([s.latitude, s.longitude], { ...style, pane: "stations" })
+        .addTo(dataLayer)
+        .bindTooltip(escapeHtml(tooltipText(s)), { direction: "top", offset: [0, -style.radius] })
+        .bindPopup(popupHtml(s), { maxWidth: 300 });
+    }
+    renderLegend(counts, notableCount);
+  }
 
-    if (circle) {
-      fitTarget = circle.getBounds();
+  function renderLegend(counts, notableCount) {
+    const data = state.data;
+    const shown = (data.stations || []).length;
+    const total = data.total_matches ?? shown;
+    const rows = CATEGORIES.filter(c => counts[c] > 0).map(c =>
+      `<div class="row">${swatch(markerStyle(c, false))}${escapeHtml(text().categories[c])}` +
+      `<span class="count">${counts[c]}</span></div>`
+    );
+    if (notableCount) {
+      const ring = { ...markerStyle("unrated", true), fillColor: css("--surface") };
+      rows.push(`<div class="row">${swatch(ring)}${escapeHtml(text().notable)}` +
+        `<span class="count">${notableCount}</span></div>`);
+    }
+    $("legend").innerHTML =
+      `<div class="title">${escapeHtml(data.truncated ? text().truncated(shown, total) : text().stations(shown))}</div>` +
+      rows.join("");
+  }
+
+  function render(data) {
+    state.data = data;
+    state.message = null;
+    drawLayers();
+    const stations = (data.stations || []).filter(
+      s => typeof s.latitude === "number" && typeof s.longitude === "number"
+    );
+    const center = data.center || {};
+    if (typeof center.latitude === "number" && typeof center.longitude === "number" && data.radius_km > 0) {
+      fitTarget = L.latLng(center.latitude, center.longitude).toBounds(data.radius_km * 2000);
     } else if (stations.length) {
       fitTarget = L.latLngBounds(stations.map(s => [s.latitude, s.longitude]));
     } else {
@@ -105,74 +372,121 @@
     }
     userMoved = false;
     fitMap();
+  }
 
-    const shown = stations.length;
-    const total = data.total_matches ?? shown;
-    statusEl.textContent = data.truncated
-      ? `${shown} of ${total} stations (truncated)`
-      : `${shown} station${shown === 1 ? "" : "s"}`;
+  function showMessage(message, detail = "") {
+    state.message = message;
+    state.detail = detail;
+    renderMessage();
+  }
+
+  function renderMessage() {
+    const message = text()[state.message] ?? state.message;
+    $("legend").textContent = message + state.detail;
+  }
+
+  // --- Tool results and host context ---
+
+  function toolText(result) {
+    return ((result && result.content) || [])
+      .filter(c => c.type === "text").map(c => c.text).join(" ");
   }
 
   function extractToolData(result) {
     if (result && typeof result.structuredContent === "object" && result.structuredContent !== null) {
       return result.structuredContent;
     }
-    for (const item of (result && result.content) || []) {
-      if (item.type === "text") {
-        try { return JSON.parse(item.text); } catch { /* not JSON */ }
-      }
+    try {
+      return JSON.parse(toolText(result));
+    } catch {
+      return null;
     }
-    return null;
   }
 
-  // --- Minimal MCP Apps bridge (JSON-RPC 2.0 over postMessage) ---
-  const INIT_ID = 1;
+  function onToolResult(result) {
+    if (result && result.isError) {
+      showMessage(toolText(result));
+      return;
+    }
+    const data = extractToolData(result);
+    if (data && Array.isArray(data.stations)) render(data);
+    else showMessage("noData");
+  }
 
-  window.addEventListener("message", (event) => {
+  function applyHostContext(context) {
+    if (!context) return;
+    if (context.theme) document.documentElement.dataset.theme = context.theme;
+    if (context.locale) state.locale = validLocale(context.locale);
+    if (context.theme || context.locale) {
+      document.documentElement.lang = text() === TEXT.de ? "de" : "en";
+      // Marker colors come from the CSS variables of the theme
+      if (state.message) renderMessage();
+      else drawLayers();
+    }
+  }
+
+  // --- MCP Apps bridge (JSON-RPC 2.0 over postMessage) ---
+
+  let nextId = 1;
+  const pending = new Map(); // request id -> settle(response)
+
+  function send(msg) {
+    window.parent.postMessage(msg, "*");
+  }
+
+  function request(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(text().timeout));
+      }, REQUEST_TIMEOUT_MS);
+      pending.set(id, msg => {
+        clearTimeout(timer);
+        if (msg.error) reject(new Error(msg.error.message || `JSON-RPC error ${msg.error.code}`));
+        else resolve(msg.result);
+      });
+      send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  window.addEventListener("message", event => {
     // Only the host may drive the map, not other frames on the page
     if (event.source !== window.parent) return;
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
 
+    if (msg.method === undefined) {
+      const settle = pending.get(msg.id);
+      pending.delete(msg.id);
+      if (settle) settle(msg);
+      return;
+    }
     // A request of the host, e.g. ui/resource-teardown or ping
-    if (msg.method !== undefined && msg.id !== undefined) {
-      window.parent.postMessage({ jsonrpc: "2.0", id: msg.id, result: {} }, "*");
+    if (msg.id !== undefined) {
+      send({ jsonrpc: "2.0", id: msg.id, result: {} });
       return;
     }
-
-    if (msg.id === INIT_ID && msg.result) {
-      window.parent.postMessage(
-        { jsonrpc: "2.0", method: "ui/notifications/initialized" }, "*"
-      );
-      // Ask the host for a fixed map height; Leaflet fills whatever box it gets
-      window.parent.postMessage({
-        jsonrpc: "2.0",
-        method: "ui/notifications/size-changed",
-        params: { height: MAP_HEIGHT_PX },
-      }, "*");
-      return;
-    }
-
-    if (msg.method === "ui/notifications/tool-result") {
-      const data = extractToolData(msg.params);
-      if (data) {
-        render(data);
-      } else {
-        statusEl.textContent = "Tool returned no map data.";
-      }
-    }
+    if (msg.method === "ui/notifications/tool-result") onToolResult(msg.params);
+    if (msg.method === "ui/notifications/host-context-changed") applyHostContext(msg.params);
+    if (msg.method === "ui/notifications/tool-cancelled") showMessage("cancelled");
   });
 
-  window.parent.postMessage({
-    jsonrpc: "2.0",
-    id: INIT_ID,
-    method: "ui/initialize",
-    params: {
-      appInfo: { name: "pegelonline-stations-map", version: "1.0.0" },
-      appCapabilities: {},
-      protocolVersion: "2025-11-21",
-    },
-  }, "*");
+  renderMessage();
+  request("ui/initialize", {
+    appInfo: { name: "pegelonline-stations-map", version: "1.1.0" },
+    appCapabilities: {},
+    protocolVersion: PROTOCOL_VERSION,
+  }).then(result => {
+    applyHostContext(result && result.hostContext);
+    send({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+    // Ask the host for a fixed map height; Leaflet fills whatever box it gets
+    send({
+      jsonrpc: "2.0",
+      method: "ui/notifications/size-changed",
+      params: { height: MAP_HEIGHT_PX },
+    });
+  }, error => showMessage("failed", error.message));
 </script>
 </body>
 </html>

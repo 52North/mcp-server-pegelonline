@@ -36,7 +36,7 @@ MAX_STATIONS = 100
 STATES = get_args(WaterLevelState)
 
 
-def _overview_station(station: dict) -> tuple[OverviewStation, str | None] | None:
+def overview_station(station: dict) -> tuple[OverviewStation, str | None] | None:
     """A station's entry with the time of its current value, or None if it
     has no water level W."""
     timeseries = normalize_timeseries(station)
@@ -202,7 +202,7 @@ async def get_water_level_overview(
             if not positions:
                 continue
             position = min(positions)
-        overview = _overview_station(station)
+        overview = overview_station(station)
         if overview is not None:
             scope.append((position, *overview))
     # By the requested water bodies, or by name across Germany, then by km

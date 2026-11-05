@@ -94,9 +94,29 @@ class MapCenter(TypedDict):
     longitude: float
 
 
-class StationsMap(NearbyStations):
-    """Data the stations map renders."""
+class MapWaterLevel(TypedDict):
+    """Current water level of a station on the map, as in the overview."""
 
+    value: CompactNumber | None
+    unit: str | None
+    state_mnw_mhw: str | None
+    # E.g. "below NNW", "above HSW" or "tidal"
+    notes: list[str]
+
+
+class MapStation(NearbyStation):
+    """Station on the map; None for stations without a water level."""
+
+    water_level: MapWaterLevel | None
+
+
+class StationsMap(TypedDict):
+    """Data the stations map renders, nearest station first."""
+
+    total_matches: int
+    returned: int
+    truncated: bool
+    stations: list[MapStation]
     center: MapCenter
     radius_km: float
 

@@ -469,12 +469,25 @@ filtered by `radius_km` (default: 25) and sorted nearest-first with a
 
 Shows an **interactive map** (MCP App) of all stations within a search radius
 around a coordinate. In clients that support MCP Apps (e.g., Claude Desktop,
-claude.ai) the map is rendered inline: OpenStreetMap tiles, a circle for the
-search radius and clickable station markers with name, water body, distance
-and UUID. Clients without MCP Apps support receive the structured station
-list instead. Parameters: `latitude`, `longitude`, `radius_km` (default: 25),
-`limit` (default: 50). The map loads Leaflet from unpkg pinned by subresource
-integrity hashes and only accepts messages from its host frame.
+claude.ai) the map is rendered inline: OpenStreetMap tiles, a dashed circle for
+the search radius and a marker per station, colored by its current water level.
+Clients without MCP Apps support receive the structured station list instead.
+Parameters: `latitude`, `longitude`, `radius_km` (default: 25), `limit` (default:
+50).
+
+Each station carries `water_level`: value, unit, `state_mnw_mhw` and `notes`, rated
+as in `get_water_level_overview` and taken from its cache, or `null` for stations
+without a water level. If that download fails, the map still shows the stations,
+without water levels. The markers show the states as a polarity: red below MNW,
+gray in between, blue above MHW. Unrated stations are hollow rings, tidal gauges
+dashed ones, and a strong ring marks a record level or a level above HSW. A legend
+counts the stations per kind; a tooltip names a station and its value, and its
+popup adds the water body, distance, state, notes, parameters and UUID.
+
+The map follows the host's theme (OpenStreetMap tiles inverted in dark mode) and
+language (German for `de-*`, else English), speaks MCP Apps protocol `2026-01-26`,
+shows the error of a failed tool call, loads Leaflet from unpkg pinned by
+subresource integrity hashes and only accepts messages from its host frame.
 
 ## Resources
 

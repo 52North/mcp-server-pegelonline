@@ -27,7 +27,13 @@
       ],
       "shortname": "KÖLN",
       "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
-      "water": "RHEIN"
+      "water": "RHEIN",
+      "water_level": {
+        "notes": [],
+        "state_mnw_mhw": "low",
+        "unit": "cm",
+        "value": 69
+      }
     },
     {
       "agency": "STANDORT KÖLN",
@@ -45,7 +51,8 @@
       ],
       "shortname": "BONN",
       "uuid": "593647aa-9fea-43ec-a7d6-6476a76ae868",
-      "water": "RHEIN"
+      "water": "RHEIN",
+      "water_level": null
     },
     {
       "agency": "STANDORT DUISBURG",
@@ -68,7 +75,8 @@
       ],
       "shortname": "DÜSSELDORF",
       "uuid": "8f7e5f92-1153-4f93-acba-ca48670c8ca9",
-      "water": "RHEIN"
+      "water": "RHEIN",
+      "water_level": null
     }
   ],
   "total_matches": 3,

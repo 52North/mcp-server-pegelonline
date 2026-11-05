@@ -1,10 +1,12 @@
 """Tools that locate stations and describe them."""
 
+import asyncio
 import logging
 from collections import Counter, defaultdict
 
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig
+from fastmcp.exceptions import ToolError
 
 from pegelonline_mcp import client
 from pegelonline_mcp.annotations import READ_ONLY
@@ -25,6 +27,8 @@ from pegelonline_mcp.mapping import (
     water_name,
 )
 from pegelonline_mcp.models import (
+    MapStation,
+    MapWaterLevel,
     NearbyStation,
     NearbyStations,
     SearchResult,
@@ -34,6 +38,7 @@ from pegelonline_mcp.models import (
     StationParameter,
     StationsMap,
 )
+from pegelonline_mcp.tools_overview import overview_station
 from pegelonline_mcp.ui import MAP_UI_URI
 
 logger = logging.getLogger(__name__)
@@ -257,6 +262,31 @@ async def find_nearest_stations(
     return await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
 
 
+async def _water_levels_by_uuid() -> dict[str, dict]:
+    """The stations of the overview by uuid; none if the API fails, so the
+    map still shows where the stations are."""
+    try:
+        stations = await client.all_water_levels()
+    except ToolError as exc:
+        logger.warning("show_stations_map: map without water levels: %s", exc)
+        return {}
+    return {s["uuid"]: s for s in stations if isinstance(s.get("uuid"), str)}
+
+
+def _map_water_level(station: dict | None) -> MapWaterLevel | None:
+    """A station's current water level as the overview rates it, or None."""
+    overview = overview_station(station) if station is not None else None
+    if overview is None:
+        return None
+    entry = overview[0]
+    return {
+        "value": entry["value"],
+        "unit": entry["unit"],
+        "state_mnw_mhw": entry["state_mnw_mhw"],
+        "notes": entry["notes"],
+    }
+
+
 async def show_stations_map(
     latitude: Latitude,
     longitude: Longitude,
@@ -266,8 +296,14 @@ async def show_stations_map(
     """
     Show an interactive map of all gauge stations within a search radius
     around a geographic coordinate. In MCP-Apps-capable clients the map is
-    rendered inline (OpenStreetMap with radius circle and station markers);
-    other clients receive the station list as structured data.
+    rendered inline (OpenStreetMap with radius circle and station markers
+    colored by their current water level); other clients receive the
+    station list as structured data.
+
+    water_level holds a station's current water level W as
+    get_water_level_overview rates it: value, unit, state_mnw_mhw and notes
+    (e.g., "below NNW", "tidal"); it is null for stations without one. The
+    values can be up to 5 minutes old.
 
     Args:
         latitude: Latitude of the search center (WGS84, e.g., 50.94).
@@ -279,11 +315,28 @@ async def show_stations_map(
         "show_stations_map: lat=%s lon=%s radius_km=%s limit=%d",
         latitude, longitude, radius_km, limit,
     )
-    result = await _fetch_nearest_stations(latitude, longitude, radius_km, limit)
+    # Declared, since mypy types the result of gather as Any
+    result: NearbyStations
+    levels: dict[str, dict]
+    result, levels = await asyncio.gather(
+        _fetch_nearest_stations(latitude, longitude, radius_km, limit),
+        _water_levels_by_uuid(),
+    )
+    stations: list[MapStation] = [
+        {**s, "water_level": _map_water_level(levels.get(s["uuid"] or ""))}
+        for s in result["stations"]
+    ]
+    logger.info(
+        "show_stations_map: %d of %d stations with a water level",
+        sum(s["water_level"] is not None for s in stations), len(stations),
+    )
     return {
         "center": {"latitude": latitude, "longitude": longitude},
         "radius_km": radius_km,
-        **result,
+        "total_matches": result["total_matches"],
+        "returned": result["returned"],
+        "truncated": result["truncated"],
+        "stations": stations,
     }
 
 

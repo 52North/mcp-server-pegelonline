@@ -339,6 +339,7 @@ async def test_find_nearest_stations(client, respx_mock, snapshot_json):
 
 async def test_show_stations_map(client, respx_mock, snapshot_json):
     respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_rhein"))
+    respx_mock.get(STATIONS_URL).respond(json=load_fixture("stations_water_levels"))
 
     result = await client.call_tool(
         "show_stations_map",
@@ -348,7 +349,32 @@ async def test_show_stations_map(client, respx_mock, snapshot_json):
     data = result.structured_content
     assert data["center"] == {"latitude": KOELN_LAT, "longitude": KOELN_LON}
     assert data["radius_km"] == 50
+    # The markers show the water level as the overview rates it; Köln stands
+    # at its record low, not below it
+    levels = {s["longname"]: s["water_level"] for s in data["stations"]}
+    assert levels["KÖLN"] == {
+        "value": 69, "unit": "cm", "state_mnw_mhw": "low", "notes": []
+    }
+    # Not among the stations of the overview fixture
+    assert levels["BONN"] is None
     assert data == snapshot_json
+
+
+async def test_show_stations_map_without_water_levels(client, respx_mock, caplog):
+    respx_mock.get(SEARCH_URL).respond(json=load_fixture("search_rhein"))
+    respx_mock.get(STATIONS_URL).respond(503)
+
+    with caplog.at_level(logging.WARNING, logger="pegelonline_mcp.tools_stations"):
+        result = await client.call_tool(
+            "show_stations_map",
+            {"latitude": KOELN_LAT, "longitude": KOELN_LON, "radius_km": 50},
+        )
+
+    # The map still shows where the stations are
+    stations = result.structured_content["stations"]
+    assert [s["longname"] for s in stations] == ["KÖLN", "BONN", "DÜSSELDORF"]
+    assert all(s["water_level"] is None for s in stations)
+    assert "map without water levels" in caplog.text
 
 
 async def test_get_latest_measurements(client, respx_mock, snapshot_json):
