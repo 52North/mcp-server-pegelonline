@@ -12,6 +12,7 @@ from pegelonline_mcp import (
     tools_charts,
     tools_forecast,
     tools_measurements,
+    tools_overview,
     tools_stations,
     ui,
 )
@@ -38,6 +39,10 @@ Workflow:
   show_measurements_chart and get_water_level_forecast.
   For the current value of one parameter at several stations, call
   compare_stations once instead of get_latest_measurements per station.
+- For the water levels along a whole water body or across Germany (e.g.,
+  "how is the Rhine?", "where is low water now?"), call
+  get_water_level_overview once instead of search_stations and
+  compare_stations; it lists record lows and highs as well.
 - For the expected course of a water level (Vorhersage, e.g., "when will it
   rise again?"), call get_water_level_forecast. Only some stations have a
   forecast; get_station_info lists it as parameter WV. The tools for
@@ -85,6 +90,7 @@ mcp = FastMCP("Pegelonline", instructions=INSTRUCTIONS, version=__version__)
 tools_stations.register(mcp)
 tools_measurements.register(mcp)
 tools_forecast.register(mcp)
+tools_overview.register(mcp)
 tools_charts.register(mcp)
 # Before the other resources, which keeps the order of resources/list
 ui.register(mcp)

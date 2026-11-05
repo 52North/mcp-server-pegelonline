@@ -79,6 +79,28 @@ async def test_fetch_forecast(respx_mock):
     assert values == load_fixture("forecast_kaub")
 
 
+async def test_all_water_levels(respx_mock):
+    route = respx_mock.get(STATIONS_URL).respond(
+        json=load_fixture("stations_water_levels")
+    )
+
+    await client.all_water_levels()
+    stations = await client.all_water_levels()
+
+    # W of every station with its current value and characteristic values,
+    # and WV where there is one
+    assert dict(route.calls.last.request.url.params) == {
+        "timeseries": "W,WV",
+        "includeTimeseries": "true",
+        "includeForecastTimeseries": "true",
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+    # The second call is served from the cache
+    assert route.call_count == 1
+    assert len(stations) == 11
+
+
 async def test_fetch_forecast_stations(respx_mock):
     route = respx_mock.get(STATIONS_URL).respond(
         json=load_fixture("stations_forecast_rhein")

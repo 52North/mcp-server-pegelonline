@@ -16,6 +16,9 @@ Pegelonline REST API.
   the latest values, `get_measurement_history` any span of the last 31 days as
   compact rows or hourly and daily summaries; all with unit and timeseries comment.
   `compare_stations` returns one parameter's current value at up to 30 stations.
+- **Overview**: `get_water_level_overview` returns the current water levels along
+  whole water bodies, by river kilometer, or the notable stations across Germany,
+  with record lows and highs, from a single cached request.
 - **Characteristic values**: `get_characteristic_values` returns a water level's
   reference values (MNW, MW, MHW, HSW, record low and high, tidal values) with the
   current value, so a reading can be told high or low.
@@ -279,6 +282,40 @@ values and the absolute height (gauge zero + W / 100) are. The stations come in
 the requested order. The API leaves out unknown stations and stations without
 the parameter without an error; `not_found` lists their UUIDs. 30 stations on
 the Elbe take about 13 000 characters.
+
+### `get_water_level_overview`
+
+Returns the current water levels along whole water bodies or across Germany, for
+questions such as "how is the Rhine?" or "where is low water now?". These took
+three calls and about 32 000 characters before: `search_stations` (without river
+kilometers) and `compare_stations` twice, at most 30 stations each.
+
+One request to the official API returns all 737 stations with a water level: W
+with its current value, both states and characteristic values, and the forecast
+`WV` where there is one. It takes 1.4 MB, about 100 KB gzipped, and half a second.
+The tool caches it for 5 minutes, so an overview of Germany and one of a water body
+share a download; the values change every 15 minutes.
+
+- With `water` (German short or long names, several separated by commas, in any
+  case), `stations` lists every station on those water bodies, by water body and
+  river kilometer: about 9 700 characters for the 36 stations on the Rhine, 17 000
+  for the 67 on the Elbe. An unknown name fails with similar ones, e.g. `RHEIN`
+  for `Rhine`.
+- Without `water`, `stations` lists only the notable stations in Germany, most
+  severe first: record lows and highs, then above HSW, then `state_mnw_mhw` `high`.
+  On 2026-11-05, that was 8 stations below NNW in about 5 600 characters.
+
+`state` keeps only the stations in that `state_mnw_mhw`. `counts` and `waters`
+count all stations in scope per state, before that filter. At most 100 stations
+are listed; `total_matches` and `truncated` tell if there were more.
+
+Each station has its `uuid`, water body, river kilometer, value and unit, both
+states, and those of NNW, MNW, MW, MHW, HSW and HHW it has in the unit of W. `notes`
+mark a value below NNW or above HHW (not for disturbed or stale values), above HSW,
+and tidal gauges: they have MTnw and MThw instead of MNW and MHW, so the API rates
+them `unknown`; rating each value against them would call every low tide low.
+`forecast` marks the stations `get_water_level_forecast` has a forecast for.
+`latest` is the newest measurement in scope.
 
 ### `get_recent_measurements`
 

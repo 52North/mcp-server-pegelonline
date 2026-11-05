@@ -1,4 +1,4 @@
-"""In-memory TTL cache for rarely changing upstream data."""
+"""In-memory TTL cache for upstream data that many calls share."""
 
 import functools
 import logging
@@ -18,20 +18,22 @@ def clear() -> None:
 
 
 def cached[**P, T](
-    key: str,
+    key: str, ttl_seconds: float | None = None
 ) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     """Cache the result of an async function under a fixed key.
 
     The key does not depend on the arguments, so use it only for functions
     whose result is the same for every call (e.g. parameterless resources).
+    Entries expire after ``ttl_seconds``, by default CACHE_TTL_SECONDS.
     Empty results are not cached: for rarely changing data they point to an
     upstream hiccup, so the next call retries.
     """
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            ttl = CACHE_TTL_SECONDS if ttl_seconds is None else ttl_seconds
             entry: tuple[float, T] | None = _cache.get(key)
-            if entry and time.monotonic() - entry[0] < CACHE_TTL_SECONDS:
+            if entry and time.monotonic() - entry[0] < ttl:
                 logger.debug("%s: served from cache", func.__name__)
                 return entry[1]
             value = await func(*args, **kwargs)

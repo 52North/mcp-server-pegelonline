@@ -1,0 +1,116 @@
+{
+  "counts": {
+    "low": 3,
+    "normal": 1,
+    "unknown": 1
+  },
+  "latest": "2026-11-05T09:45+01:00",
+  "returned": 5,
+  "state": null,
+  "stations": [
+    {
+      "characteristic_values": {},
+      "forecast": false,
+      "km": 0.5,
+      "notes": [],
+      "state_mnw_mhw": "unknown",
+      "state_nsw_hsw": "unknown",
+      "station": "KONSTANZ-RHEIN",
+      "unit": "cm",
+      "uuid": "e020e651-e422-46d3-ae28-34887c5a4a8e",
+      "value": 233,
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "HHW": 926,
+        "MHW": 564,
+        "MNW": 192,
+        "MW": 220,
+        "NNW": 114
+      },
+      "forecast": false,
+      "km": 186.2,
+      "notes": [],
+      "state_mnw_mhw": "normal",
+      "state_nsw_hsw": "unknown",
+      "station": "RHEINWEILER",
+      "unit": "cm",
+      "uuid": "06b978dd-8c4d-48ac-a0c8-2c16681ed281",
+      "value": 197,
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "HHW": 822,
+        "HSW": 650,
+        "MHW": 529,
+        "MNW": 46,
+        "MW": 195,
+        "NNW": 2
+      },
+      "forecast": false,
+      "km": 443.37,
+      "notes": [],
+      "state_mnw_mhw": "low",
+      "state_nsw_hsw": "normal",
+      "station": "WORMS",
+      "unit": "cm",
+      "uuid": "844a620f-f3b8-4b6b-8e3c-783ae2aa232a",
+      "value": 2,
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "HHW": 825,
+        "HSW": 640,
+        "MHW": 544,
+        "MNW": 65,
+        "MW": 208,
+        "NNW": 25
+      },
+      "forecast": true,
+      "km": 546.23,
+      "notes": [
+        "below NNW"
+      ],
+      "state_mnw_mhw": "low",
+      "state_nsw_hsw": "normal",
+      "station": "KAUB",
+      "unit": "cm",
+      "uuid": "1d26e504-7f9e-480a-b52c-5932be6549ab",
+      "value": 19,
+      "water": "RHEIN"
+    },
+    {
+      "characteristic_values": {
+        "HHW": 1069,
+        "HSW": 830,
+        "MHW": 725,
+        "MNW": 114,
+        "MW": 297,
+        "NNW": 69
+      },
+      "forecast": true,
+      "km": 688.0,
+      "notes": [],
+      "state_mnw_mhw": "low",
+      "state_nsw_hsw": "normal",
+      "station": "KÖLN",
+      "unit": "cm",
+      "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+      "value": 69,
+      "water": "RHEIN"
+    }
+  ],
+  "total_matches": 5,
+  "truncated": false,
+  "water": "rhein",
+  "waters": {
+    "RHEIN": {
+      "low": 3,
+      "normal": 1,
+      "unknown": 1
+    }
+  }
+}

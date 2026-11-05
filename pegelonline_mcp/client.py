@@ -32,6 +32,10 @@ CHART_HEIGHT = 400
 # the API lists it only with includeForecastTimeseries
 FORECAST_PARAMETER = "WV"
 
+# The current water levels of all stations change every 15 minutes; a few
+# minutes let an overview of Germany and one of a water body share a download
+WATER_LEVELS_TTL_SECONDS = 5 * 60
+
 
 async def search(params: dict | None = None) -> list[dict]:
     """Stations matching the dict API search filters."""
@@ -94,6 +98,26 @@ async def fetch_stations_current(ids: list[str], parameter: str) -> list[dict]:
         "includeCharacteristicValues": "true",
     }
     return await get_json(f"{OFFICIAL_API_URL}/stations.json", params=params)
+
+
+@cached("water-levels", ttl_seconds=WATER_LEVELS_TTL_SECONDS)
+async def all_water_levels() -> list[dict]:
+    """Every station with a water level W, from a single request: W with
+    its current measurement and characteristic values, and the forecast WV
+    where the station has one.
+
+    The 737 stations take 1.4 MB, about 100 KB gzipped.
+    """
+    params = {
+        "timeseries": f"W,{FORECAST_PARAMETER}",
+        "includeTimeseries": "true",
+        "includeForecastTimeseries": "true",
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+    stations = await get_json(f"{OFFICIAL_API_URL}/stations.json", params=params)
+    logger.info("all water levels: fetched and cached %d stations", len(stations))
+    return stations
 
 
 async def fetch_forecast_stations(water: str) -> list[dict]:

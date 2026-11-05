@@ -178,6 +178,8 @@ async def compare_stations(uuids: StationIds, parameter: str = "W") -> StationCo
 
     The stations come in the order of uuids. not_found lists the uuids the
     API did not return: unknown stations and stations without the parameter.
+    For the water levels of all stations on a water body, call
+    get_water_level_overview instead.
 
     Args:
         uuids: The UUIDs of the stations, one per item (1 to 30, e.g., from

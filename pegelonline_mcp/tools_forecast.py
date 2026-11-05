@@ -93,15 +93,15 @@ def _minutes(timestamp: str | None) -> str | None:
     return datetime.fromisoformat(timestamp).isoformat(timespec="minutes")
 
 
-def _number(value: float | None) -> CompactNumber | None:
-    return series.compact(float(value)) if value is not None else None
-
-
 def _value(m: ForecastValue) -> CompactNumber | list[CompactNumber | None] | None:
     """A forecast value, with its range where the source gives one."""
-    value = _number(m["value"])
+    value = series.compact_number(m["value"])
     if "percentile10" in m or "percentile90" in m:
-        return [_number(m.get("percentile10")), value, _number(m.get("percentile90"))]
+        return [
+            series.compact_number(m.get("percentile10")),
+            value,
+            series.compact_number(m.get("percentile90")),
+        ]
     return value
 
 

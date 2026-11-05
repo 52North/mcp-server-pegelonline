@@ -7,6 +7,7 @@ from statistics import fmean
 from pegelonline_mcp.constraints import Resolution
 from pegelonline_mcp.models import (
     ChartValues,
+    CompactNumber,
     HistoryRows,
     HistorySummary,
     Measurement,
@@ -51,6 +52,11 @@ def grid(interval: object, points: list[Point]) -> int | None:
 def compact(value: float) -> float:
     """``value`` as int if it is whole, so the JSON leaves off ".0"."""
     return int(value) if value.is_integer() else value
+
+
+def compact_number(value: object) -> CompactNumber | None:
+    """``value`` compacted if it is a number, else None."""
+    return compact(float(value)) if isinstance(value, (int, float)) else None
 
 
 def mean(values: list[float]) -> float:

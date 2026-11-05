@@ -36,7 +36,12 @@ from conftest import (
     fake_measurements_api,
     load_fixture,
 )
-from pegelonline_mcp import tools_charts, tools_forecast, tools_measurements
+from pegelonline_mcp import (
+    tools_charts,
+    tools_forecast,
+    tools_measurements,
+    tools_overview,
+)
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.series import MAX_RAW_SLOTS
@@ -1151,6 +1156,163 @@ async def test_measurement_tools_reject_the_forecast(client, respx_mock, tool, a
         await client.call_tool(tool, {**arguments, "parameter": "wv"})
 
 
+def water_levels(changes: dict[str, tuple[float, str, str]]) -> list[dict[str, Any]]:
+    """The stations of the overview fixture, with the current W of some, by
+    name, set to (value, state_mnw_mhw, state_nsw_hsw)."""
+    stations = load_fixture("stations_water_levels")
+    for station in stations:
+        if station["longname"] in changes:
+            value, state_mnw_mhw, state_nsw_hsw = changes[station["longname"]]
+            w = next(ts for ts in station["timeseries"] if ts["shortname"] == "W")
+            w["currentMeasurement"].update(
+                value=value, stateMnwMhw=state_mnw_mhw, stateNswHsw=state_nsw_hsw
+            )
+    return stations
+
+
+def mock_water_levels(respx_mock, stations: list[dict[str, Any]] | None = None):
+    return respx_mock.get(STATIONS_URL).respond(
+        json=load_fixture("stations_water_levels") if stations is None else stations
+    )
+
+
+def names(result) -> list[str]:
+    return [s["station"] for s in result.structured_content["stations"]]
+
+
+async def test_get_water_level_overview(client, respx_mock, snapshot_json):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("get_water_level_overview", {"water": "rhein"})
+
+    data = result.structured_content
+    # A longitudinal section, by river kilometer
+    assert names(result) == ["KONSTANZ-RHEIN", "RHEINWEILER", "WORMS", "KAUB", "KÖLN"]
+    assert data["counts"] == {"low": 3, "normal": 1, "unknown": 1}
+    kaub, koeln = data["stations"][3], data["stations"][4]
+    assert (kaub["notes"], kaub["forecast"]) == (["below NNW"], True)
+    # Köln stands at its record low, not below it
+    assert koeln["value"] == koeln["characteristic_values"]["NNW"]
+    assert koeln["notes"] == []
+    assert data["latest"] == "2026-11-05T09:45+01:00"
+    assert json.loads(result.content[0].text) == data
+    assert data == snapshot_json
+
+
+async def test_get_water_level_overview_of_germany(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("get_water_level_overview", {})
+
+    data = result.structured_content
+    # Only the notable stations, but every station counted
+    assert names(result) == ["KAUB"]
+    assert data["counts"] == {
+        "low": 4, "normal": 1, "unknown": 4, "commented": 1, "out-dated": 1
+    }
+    assert list(data["waters"]) == [
+        "ALTE MAAS", "DATTELN-HAMM-KANAL", "DONAU", "DORTMUND-EMS-KANAL", "ELBE",
+        "NORDSEE", "RHEIN",
+    ]
+    assert data["waters"]["RHEIN"] == {"low": 3, "normal": 1, "unknown": 1}
+    assert data["latest"] == "2026-11-05T09:51+01:00"
+
+
+async def test_get_water_level_overview_most_severe_first(client, respx_mock):
+    mock_water_levels(respx_mock, water_levels({
+        "WORMS": (900.0, "high", "high"),  # above HHW (822)
+        "KÖLN": (1000.0, "high", "high"),  # above HSW (830)
+        "DRESDEN": (480.0, "high", "normal"),
+    }))
+
+    result = await client.call_tool("get_water_level_overview", {})
+
+    # Records first, by water body and km, then above HSW, then high
+    assert names(result) == ["WORMS", "KAUB", "KÖLN", "DRESDEN"]
+    notes = [s["notes"] for s in result.structured_content["stations"]]
+    assert notes == [["above HHW", "above HSW"], ["below NNW"], ["above HSW"], []]
+
+
+async def test_get_water_level_overview_of_several_waters(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool(
+        "get_water_level_overview", {"water": "Elbe, dortmund-ems-kanal"}
+    )
+
+    # Short and long names, in the requested order
+    assert names(result) == ["DRESDEN", "HERBRUM HAFENDAMM"]
+    assert list(result.structured_content["waters"]) == ["ELBE", "DORTMUND-EMS-KANAL"]
+
+
+@pytest.mark.parametrize(
+    ("water", "message"),
+    [
+        ("Rhine", "Unknown water 'Rhine'; did you mean RHEIN"),
+        ("Amazonas", "Unknown water 'Amazonas'; water bodies have German names"),
+    ],
+)
+async def test_get_water_level_overview_unknown_water(client, respx_mock, water, message):
+    mock_water_levels(respx_mock)
+
+    with pytest.raises(ToolError, match=message):
+        await client.call_tool("get_water_level_overview", {"water": f"ELBE, {water}"})
+
+
+async def test_get_water_level_overview_state_filters_only_stations(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool(
+        "get_water_level_overview", {"water": "RHEIN", "state": "low"}
+    )
+
+    data = result.structured_content
+    assert names(result) == ["WORMS", "KAUB", "KÖLN"]
+    assert data["counts"] == {"low": 3, "normal": 1, "unknown": 1}
+    assert (data["total_matches"], data["returned"]) == (3, 3)
+
+
+async def test_get_water_level_overview_notes(client, respx_mock):
+    # A disturbed value below NNW (730) is no record
+    mock_water_levels(
+        respx_mock, water_levels({"ERLAU": (700.0, "commented", "commented")})
+    )
+
+    result = await client.call_tool(
+        "get_water_level_overview", {"water": "DEK, NORDSEE, DONAU, DHK"}
+    )
+
+    stations = {s["station"]: s for s in result.structured_content["stations"]}
+    # Tidal gauges have no MNW and MHW, so the API leaves them unknown
+    assert stations["HERBRUM HAFENDAMM"]["notes"] == ["tidal"]
+    assert stations["HERBRUM HAFENDAMM"]["state_mnw_mhw"] == "unknown"
+    assert stations["BAKE Z"]["notes"] == ["tidal"]
+    assert stations["ERLAU"]["notes"] == []
+    # A canal in m+NN has no characteristic values in that unit
+    assert stations["WALTROP"]["unit"] == "m+NN"
+    assert stations["WALTROP"]["characteristic_values"] == {}
+
+
+async def test_get_water_level_overview_truncated(client, respx_mock, monkeypatch):
+    monkeypatch.setattr(tools_overview, "MAX_STATIONS", 2)
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("get_water_level_overview", {"water": "RHEIN"})
+
+    data = result.structured_content
+    assert names(result) == ["KONSTANZ-RHEIN", "RHEINWEILER"]
+    assert (data["total_matches"], data["returned"], data["truncated"]) == (5, 2, True)
+
+
+async def test_get_water_level_overview_shares_a_download(client, respx_mock):
+    route = mock_water_levels(respx_mock)
+
+    await client.call_tool("get_water_level_overview", {})
+    await client.call_tool("get_water_level_overview", {"water": "RHEIN"})
+
+    assert route.call_count == 1
+
+
 async def test_chart_tools_are_linked_to_the_ui(client):
     tools = {t.name: t for t in await client.list_tools()}
 
@@ -1305,6 +1467,15 @@ async def test_resolution_in_tool_schema(client):
     assert schema["enum"] == ["auto", "raw", "hour", "day"]
 
 
+async def test_overview_state_in_tool_schema(client):
+    tools = {t.name: t for t in await client.list_tools()}
+    schema = tools["get_water_level_overview"].input_schema["properties"]["state"]
+
+    # state is optional, so its values sit in the non-null branch
+    values = next(s for s in schema["anyOf"] if "enum" in s)
+    assert values["enum"] == ["low", "normal", "high", "unknown", "commented", "out-dated"]
+
+
 async def test_search_field_in_tool_schema(client):
     tools = {t.name: t for t in await client.list_tools()}
     schema = tools["list_search_values"].input_schema["properties"]["field"]
@@ -1369,6 +1540,13 @@ async def test_history_allows_large_results(client):
                 "forecast_until", "summary", "values",
             },
         ),
+        (
+            "get_water_level_overview",
+            {
+                "water", "state", "latest", "counts", "waters", "total_matches",
+                "returned", "truncated", "stations",
+            },
+        ),
     ],
 )
 async def test_output_schema_describes_response(client, tool, properties):
@@ -1403,6 +1581,7 @@ async def test_tools_are_annotated_read_only(client):
         "show_measurements_chart",
         "get_chart_values",
         "get_water_level_forecast",
+        "get_water_level_overview",
     }
     for tool in tools:
         assert tool.annotations.read_only_hint is True, tool.name

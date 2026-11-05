@@ -3,11 +3,11 @@
 from pegelonline_mcp import cache
 
 
-def counting(key: str):
+def counting(key: str, ttl_seconds: float | None = None):
     """A cached async function that counts how often its body runs."""
     calls = []
 
-    @cache.cached(key)
+    @cache.cached(key, ttl_seconds=ttl_seconds)
     async def load() -> str:
         """Load something expensive."""
         calls.append(1)
@@ -56,6 +56,18 @@ async def test_expired_entry_is_reloaded(monkeypatch):
     await load()
 
     assert len(calls) == 2
+
+
+async def test_own_ttl_overrides_the_default(monkeypatch):
+    expiring, expiring_calls = counting("expiring", ttl_seconds=0)
+    lasting, lasting_calls = counting("lasting", ttl_seconds=60)
+    # The default no longer applies to either
+    monkeypatch.setattr(cache, "CACHE_TTL_SECONDS", 0)
+
+    for load in (expiring, expiring, lasting, lasting):
+        await load()
+
+    assert (len(expiring_calls), len(lasting_calls)) == (2, 1)
 
 
 def test_cached_preserves_metadata():

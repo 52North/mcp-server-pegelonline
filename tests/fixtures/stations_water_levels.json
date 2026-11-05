@@ -1,0 +1,942 @@
+[
+  {
+    "uuid": "1d26e504-7f9e-480a-b52c-5932be6549ab",
+    "number": "25700100",
+    "shortname": "KAUB",
+    "longname": "KAUB",
+    "km": 546.23,
+    "agency": "STANDORT BINGEN",
+    "longitude": 7.764962,
+    "latitude": 50.085438,
+    "voiceServiceNumber": "+49 228 286527 558",
+    "water": {
+      "shortname": "RHEIN",
+      "longname": "RHEIN"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 19.0,
+          "stateMnwMhw": "low",
+          "stateNswHsw": "normal"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 67.669,
+          "validFrom": "2019-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "TuGLW",
+            "longname": "verkehrsgesicherte Fahrrinnentiefe unter GlW (Tiefe unter GlW)",
+            "unit": "cm",
+            "value": 190.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "NW",
+            "longname": "Niedrigster Tageswasserstand ",
+            "unit": "cm",
+            "value": 25.0,
+            "occurrences": [
+              "2018-10-22"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 208.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HSW",
+            "longname": "höchster Schifffahrtswasserstand",
+            "unit": "cm",
+            "value": 640.0,
+            "validFrom": "1950-01-01"
+          },
+          {
+            "shortname": "HW",
+            "longname": "Höchster Momentanwasserstand ",
+            "unit": "cm",
+            "value": 719.0,
+            "occurrences": [
+              "2013-06-05"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "GlW",
+            "longname": "gleichwertiger Wasserstand",
+            "unit": "cm",
+            "value": 77.0,
+            "validFrom": "2023-01-01"
+          },
+          {
+            "shortname": "M_I",
+            "longname": "Marke_I",
+            "unit": "cm",
+            "value": 460.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 25.0,
+            "occurrences": [
+              "2018-10-22"
+            ]
+          },
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 825.0,
+            "occurrences": [
+              "1883-01-05"
+            ]
+          },
+          {
+            "shortname": "M_II",
+            "longname": "Marke_II",
+            "unit": "cm",
+            "value": 640.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 65.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 544.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      },
+      {
+        "shortname": "WV",
+        "longname": "WASSERSTANDVORHERSAGE",
+        "unit": "cm",
+        "equidistance": 120,
+        "start": "2026-11-05T07:00:00+01:00",
+        "end": "2026-11-09T07:00:00+01:00",
+        "comment": {
+          "shortDescription": "nwv-bfg",
+          "longDescription": "Vorhersagen und Abschätzungen vom: 05.11.2026 um 07:00 Uhr, Quelle: Bundesanstalt für Gewässerkunde. Weitere Informationen zur Unterscheidung von Vorhersage und Abschätzung finden Sie auf den Seiten der Bundesanstalt für Gewässerkunde"
+        }
+      }
+    ]
+  },
+  {
+    "uuid": "a6ee8177-107b-47dd-bcfd-30960ccc6e9c",
+    "number": "2730010",
+    "shortname": "KÖLN",
+    "longname": "KÖLN",
+    "km": 688.0,
+    "agency": "STANDORT KÖLN",
+    "longitude": 6.9633,
+    "latitude": 50.936949,
+    "voiceServiceNumber": "+49 228 286527 567",
+    "water": {
+      "shortname": "RHEIN",
+      "longname": "RHEIN"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 69.0,
+          "stateMnwMhw": "low",
+          "stateNswHsw": "normal"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 35.038,
+          "validFrom": "2019-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "GlW",
+            "longname": "gleichwertiger Wasserstand",
+            "unit": "cm",
+            "value": 139.0,
+            "validFrom": "2023-01-01"
+          },
+          {
+            "shortname": "TuGLW",
+            "longname": "verkehrsgesicherte Fahrrinnentiefe unter GlW (Tiefe unter GlW)",
+            "unit": "cm",
+            "value": 250.0,
+            "validFrom": "2000-02-01"
+          },
+          {
+            "shortname": "M_II",
+            "longname": "Marke_II",
+            "unit": "cm",
+            "value": 830.0,
+            "validFrom": "1995-01-01"
+          },
+          {
+            "shortname": "M_I",
+            "longname": "Marke_I",
+            "unit": "cm",
+            "value": 620.0,
+            "validFrom": "1995-01-01"
+          },
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 1069.0,
+            "occurrences": [
+              "1926-01-01"
+            ]
+          },
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 69.0,
+            "occurrences": [
+              "2018-10-23"
+            ]
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 114.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 297.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 725.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HSW",
+            "longname": "höchster Schifffahrtswasserstand",
+            "unit": "cm",
+            "value": 830.0,
+            "validFrom": "1950-01-01"
+          }
+        ]
+      },
+      {
+        "shortname": "WV",
+        "longname": "WASSERSTANDVORHERSAGE",
+        "unit": "cm",
+        "equidistance": 120,
+        "start": "2026-11-05T07:00:00+01:00",
+        "end": "2026-11-09T07:00:00+01:00",
+        "comment": {
+          "shortDescription": "nwv-bfg",
+          "longDescription": "Vorhersagen und Abschätzungen vom: 05.11.2026 um 07:00 Uhr, Quelle: Bundesanstalt für Gewässerkunde. Weitere Informationen zur Unterscheidung von Vorhersage und Abschätzung finden Sie auf den Seiten der Bundesanstalt für Gewässerkunde"
+        }
+      }
+    ]
+  },
+  {
+    "uuid": "844a620f-f3b8-4b6b-8e3c-783ae2aa232a",
+    "number": "23900200",
+    "shortname": "WORMS",
+    "longname": "WORMS",
+    "km": 443.37,
+    "agency": "STANDORT MANNHEIM",
+    "longitude": 8.377519,
+    "latitude": 49.631837,
+    "voiceServiceNumber": "+49 228 286527 552",
+    "water": {
+      "shortname": "RHEIN",
+      "longname": "RHEIN"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 2.0,
+          "stateMnwMhw": "low",
+          "stateNswHsw": "normal"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 84.112,
+          "validFrom": "2017-07-18"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "TuGLW",
+            "longname": "verkehrsgesicherte Fahrrinnentiefe unter GlW (Tiefe unter GlW)",
+            "unit": "cm",
+            "value": 210.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "NW",
+            "longname": "Niedrigster Tageswasserstand ",
+            "unit": "cm",
+            "value": 2.0,
+            "occurrences": [
+              "2018-10-20"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 195.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HSW",
+            "longname": "höchster Schifffahrtswasserstand",
+            "unit": "cm",
+            "value": 650.0,
+            "validFrom": "1950-01-01"
+          },
+          {
+            "shortname": "HW",
+            "longname": "Höchster Momentanwasserstand ",
+            "unit": "cm",
+            "value": 708.0,
+            "occurrences": [
+              "2013-06-03"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "GlW",
+            "longname": "gleichwertiger Wasserstand",
+            "unit": "cm",
+            "value": 68.0,
+            "validFrom": "2023-01-01"
+          },
+          {
+            "shortname": "M_II",
+            "longname": "Marke_II",
+            "unit": "cm",
+            "value": 650.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 2.0,
+            "occurrences": [
+              "2018-10-20"
+            ]
+          },
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 822.0,
+            "occurrences": [
+              "1882-12-29"
+            ]
+          },
+          {
+            "shortname": "M_I",
+            "longname": "Marke_I",
+            "unit": "cm",
+            "value": 440.0,
+            "validFrom": "2004-01-01"
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 46.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 529.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uuid": "06b978dd-8c4d-48ac-a0c8-2c16681ed281",
+    "number": "23300130",
+    "shortname": "RHEINWEILER",
+    "longname": "RHEINWEILER",
+    "km": 186.2,
+    "agency": "STANDORT FREIBURG",
+    "longitude": 7.529275,
+    "latitude": 47.711059,
+    "voiceServiceNumber": "+49 228 286527 541",
+    "water": {
+      "shortname": "RHEIN",
+      "longname": "RHEIN"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 197.0,
+          "stateMnwMhw": "normal",
+          "stateNswHsw": "unknown"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 217.291,
+          "validFrom": "2018-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 114.0,
+            "occurrences": [
+              "1954-02-23"
+            ]
+          },
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 926.0,
+            "occurrences": [
+              "1999-05-13"
+            ]
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 192.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "NW",
+            "longname": "Niedrigster Tageswasserstand ",
+            "unit": "cm",
+            "value": 168.0,
+            "occurrences": [
+              "2010-12-04"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 220.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 564.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HW",
+            "longname": "Höchster Momentanwasserstand ",
+            "unit": "cm",
+            "value": 792.0,
+            "occurrences": [
+              "2013-06-01"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uuid": "e020e651-e422-46d3-ae28-34887c5a4a8e",
+    "number": "3329",
+    "shortname": "KONSTANZ-RHEIN",
+    "longname": "KONSTANZ-RHEIN",
+    "km": 0.5,
+    "agency": "REGIERUNGSPRÄSIDIUM FREIBURG",
+    "longitude": 9.172858,
+    "latitude": 47.667889,
+    "voiceServiceNumber": "+49 228 286527 540",
+    "water": {
+      "shortname": "RHEIN",
+      "longname": "RHEIN"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 233.0,
+          "stateMnwMhw": "unknown",
+          "stateNswHsw": "unknown"
+        },
+        "characteristicValues": []
+      }
+    ]
+  },
+  {
+    "uuid": "70272185-b2b3-4178-96b8-43bea330dcae",
+    "number": "501060",
+    "shortname": "DRESDEN",
+    "longname": "DRESDEN",
+    "km": 55.63,
+    "agency": "STANDORT DRESDEN",
+    "longitude": 13.738832,
+    "latitude": 51.05446,
+    "voiceServiceNumber": "+49 228 286527 069",
+    "water": {
+      "shortname": "ELBE",
+      "longname": "ELBE"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:45:00+01:00",
+          "value": 63.0,
+          "stateMnwMhw": "low",
+          "stateNswHsw": "normal"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 102.7,
+          "validFrom": "2019-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 940.0,
+            "occurrences": [
+              "2002-08-17"
+            ]
+          },
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 21.0,
+            "occurrences": [
+              "1947-08-12",
+              "1952-08-15"
+            ]
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 67.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 156.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HSW",
+            "longname": "höchster Schifffahrtswasserstand",
+            "unit": "cm",
+            "value": 500.0,
+            "validFrom": "2002-11-05"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 458.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      },
+      {
+        "shortname": "WV",
+        "longname": "WASSERSTANDVORHERSAGE",
+        "unit": "cm",
+        "equidistance": 120,
+        "start": "2026-11-04T06:00:00+01:00",
+        "end": "2026-11-06T06:00:00+01:00",
+        "comment": {
+          "shortDescription": "wsa-md",
+          "longDescription": "Vorhersagen und Abschätzungen vom: 04.11.2026 um 06:00 Uhr, Quelle: WSA Elbe. Weitere Informationen zur Unterscheidung von Vorhersage und Abschätzung finden Sie auf den Seiten der Bundesanstalt für Gewässerkunde."
+        }
+      }
+    ]
+  },
+  {
+    "uuid": "8177a148-5674-4b8f-8ded-050907f640f3",
+    "number": "3770030",
+    "shortname": "HERBRUM HAFENDAMM",
+    "longname": "HERBRUM HAFENDAMM",
+    "km": 213.07,
+    "agency": "STANDORT MEPPEN",
+    "longitude": 7.317135,
+    "latitude": 53.041915,
+    "voiceServiceNumber": "+49 228 286527 055",
+    "water": {
+      "shortname": "DEK",
+      "longname": "DORTMUND-EMS-KANAL"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 1,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:51:00+01:00",
+          "value": 659.0,
+          "stateMnwMhw": "unknown",
+          "stateNswHsw": "unknown"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "MThw",
+            "longname": "Mittlerer Tidehochwasserstand",
+            "unit": "cm",
+            "value": 705.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MTnw",
+            "longname": "Mittlerer Tideniedrigwasserstand",
+            "unit": "cm",
+            "value": 405.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HThw",
+            "longname": "Höchster Tidehochwasserstand",
+            "unit": "cm",
+            "value": 883.0,
+            "occurrences": [
+              "2012-01-05"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "NTnw",
+            "longname": "Niedrigster Tideniedrigwasserstand",
+            "unit": "cm",
+            "value": 290.0,
+            "occurrences": [
+              "2018-12-16"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uuid": "facc5c16-f700-4248-9893-a395bffaf2e4",
+    "number": "27800090",
+    "shortname": "WALTROP",
+    "longname": "WALTROP",
+    "km": 2.144,
+    "agency": "RHEINE",
+    "longitude": 7.380201,
+    "latitude": 51.639741,
+    "voiceServiceNumber": "+49 228 286527 012",
+    "water": {
+      "shortname": "DHK",
+      "longname": "DATTELN-HAMM-KANAL"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "m+NN",
+        "equidistance": 1,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:30:00+01:00",
+          "value": 56.51,
+          "stateMnwMhw": "unknown",
+          "stateNswHsw": "unknown"
+        },
+        "characteristicValues": []
+      }
+    ]
+  },
+  {
+    "uuid": "99619dc5-9c88-45e9-a97d-653c41cda8a1",
+    "number": "10096001",
+    "shortname": "ERLAU",
+    "longname": "ERLAU",
+    "km": 2214.5,
+    "agency": "STANDORT REGENSBURG",
+    "longitude": 13.586813,
+    "latitude": 48.567382,
+    "voiceServiceNumber": "+49 228 286527 019",
+    "water": {
+      "shortname": "DONAU",
+      "longname": "DONAU"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 15,
+        "currentMeasurement": {
+          "timestamp": "2026-11-02T07:30:00+01:00",
+          "value": 737.0,
+          "stateMnwMhw": "commented",
+          "stateNswHsw": "commented"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": 282.648,
+          "validFrom": "2019-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "HHW",
+            "longname": "Höchster Hochwasserstand",
+            "unit": "cm",
+            "value": 1186.0,
+            "occurrences": [
+              "1954-07-10",
+              "2013-06-03"
+            ]
+          },
+          {
+            "shortname": "NNW",
+            "longname": "Niedrigster Niedrigwasserstand",
+            "unit": "cm",
+            "value": 730.0,
+            "occurrences": [
+              "1967-12-05"
+            ]
+          },
+          {
+            "shortname": "MNW",
+            "longname": "Mittel der Niedrigwasserstände ",
+            "unit": "cm",
+            "value": 737.0,
+            "timespanStart": "2006-11-01",
+            "timespanEnd": "2015-10-31"
+          },
+          {
+            "shortname": "NW",
+            "longname": "Niedrigster Tageswasserstand ",
+            "unit": "cm",
+            "value": 736.0,
+            "occurrences": [
+              "2008"
+            ],
+            "timespanStart": "2000-11-01",
+            "timespanEnd": "2010-10-31"
+          },
+          {
+            "shortname": "MW",
+            "longname": "Mittel der Tageswasserstände ",
+            "unit": "cm",
+            "value": 752.0,
+            "timespanStart": "2006-11-01",
+            "timespanEnd": "2015-10-31"
+          },
+          {
+            "shortname": "MHW",
+            "longname": "Mittel der Hochwasserstände ",
+            "unit": "cm",
+            "value": 861.0,
+            "timespanStart": "2006-11-01",
+            "timespanEnd": "2015-10-31"
+          },
+          {
+            "shortname": "HW",
+            "longname": "Höchster Momentanwasserstand ",
+            "unit": "cm",
+            "value": 992.0,
+            "occurrences": [
+              "2002"
+            ],
+            "timespanStart": "2000-11-01",
+            "timespanEnd": "2010-10-31"
+          }
+        ],
+        "comment": {
+          "shortDescription": "Ausfall",
+          "longDescription": "Kabelarbeiten"
+        }
+      }
+    ]
+  },
+  {
+    "uuid": "104fdc24-1dc6-4cb7-b44f-10bd02e13f40",
+    "number": "9510066",
+    "shortname": "BAKE Z",
+    "longname": "BAKE Z",
+    "km": 755.9,
+    "agency": "STANDORT CUXHAVEN",
+    "longitude": 8.314602,
+    "latitude": 54.013519,
+    "voiceServiceNumber": "+49 228 286527 470",
+    "water": {
+      "shortname": "NORDSEE",
+      "longname": "NORDSEE"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 1,
+        "currentMeasurement": {
+          "timestamp": "2026-11-03T08:01:00+01:00",
+          "value": 542.0,
+          "stateMnwMhw": "out-dated",
+          "stateNswHsw": "out-dated"
+        },
+        "gaugeZero": {
+          "unit": "m. ü. NHN",
+          "value": -5.031,
+          "validFrom": "2019-11-01"
+        },
+        "characteristicValues": [
+          {
+            "shortname": "MThw",
+            "longname": "Mittlerer Tidehochwasserstand",
+            "unit": "cm",
+            "value": 644.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "MTnw",
+            "longname": "Mittlerer Tideniedrigwasserstand",
+            "unit": "cm",
+            "value": 359.0,
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "HThw",
+            "longname": "Höchster Tidehochwasserstand",
+            "unit": "cm",
+            "value": 876.0,
+            "occurrences": [
+              "2013-12-06"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          },
+          {
+            "shortname": "NTnw",
+            "longname": "Niedrigster Tideniedrigwasserstand",
+            "unit": "cm",
+            "value": 181.0,
+            "occurrences": [
+              "2018-03-17"
+            ],
+            "timespanStart": "2010-11-01",
+            "timespanEnd": "2020-10-31"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uuid": "6c6f84c2-b7ea-4720-8ecd-a83c100c6291",
+    "number": "123456785",
+    "shortname": "DORDRECHT",
+    "longname": "DORDRECHT",
+    "km": 975.0,
+    "agency": "RIJKSWATERSTAAT",
+    "water": {
+      "shortname": "ALTE_MAAS",
+      "longname": "ALTE MAAS"
+    },
+    "timeseries": [
+      {
+        "shortname": "W",
+        "longname": "WASSERSTAND ROHDATEN",
+        "unit": "cm",
+        "equidistance": 10,
+        "currentMeasurement": {
+          "timestamp": "2026-11-05T09:40:00+01:00",
+          "value": -21.0,
+          "stateMnwMhw": "unknown",
+          "stateNswHsw": "unknown"
+        },
+        "characteristicValues": []
+      }
+    ]
+  }
+]

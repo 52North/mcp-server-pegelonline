@@ -213,6 +213,43 @@ class StationComparison(TypedDict):
     not_found: list[str]
 
 
+class OverviewStation(TypedDict):
+    """Current water level of a station in an overview."""
+
+    uuid: str | None
+    station: str | None
+    water: str | None
+    km: float | None
+    value: CompactNumber | None
+    unit: str | None
+    state_mnw_mhw: str | None
+    state_nsw_hsw: str | None
+    # Short name to value of NNW, MNW, MW, MHW, HSW and HHW, where present
+    characteristic_values: dict[str, CompactNumber | None]
+    # E.g. "below NNW", "above HSW" or "tidal"
+    notes: list[str]
+    # Whether get_water_level_forecast has a forecast for the station
+    forecast: bool
+
+
+class WaterLevelOverview(TypedDict):
+    """Current water levels along water bodies or across Germany."""
+
+    # The arguments, echoed
+    water: str | None
+    state: str | None
+    # The newest measurement among the counted stations
+    latest: str | None
+    # Stations per state_mnw_mhw, in total and per water body, before state
+    # filters the stations
+    counts: dict[str, int]
+    waters: dict[str, dict[str, int]]
+    total_matches: int
+    returned: int
+    truncated: bool
+    stations: list[OverviewStation]
+
+
 class Measurement(TypedDict):
     """Single measurement as the official API returns it."""
 
