@@ -10,6 +10,7 @@ from pegelonline_mcp import (
     __version__,
     resources,
     tools_charts,
+    tools_forecast,
     tools_measurements,
     tools_stations,
     ui,
@@ -33,10 +34,14 @@ Workflow:
   place to latitude/longitude yourself before calling them.
 - Use the station uuid from those results for get_station_info and the
   measurement tools: get_latest_measurements, get_characteristic_values,
-  get_recent_measurements, get_measurement_history, get_measurements_chart
-  and show_measurements_chart.
+  get_recent_measurements, get_measurement_history, get_measurements_chart,
+  show_measurements_chart and get_water_level_forecast.
   For the current value of one parameter at several stations, call
   compare_stations once instead of get_latest_measurements per station.
+- For the expected course of a water level (Vorhersage, e.g., "when will it
+  rise again?"), call get_water_level_forecast. Only some stations have a
+  forecast; get_station_info lists it as parameter WV. The tools for
+  measured values do not take WV.
 - For a time span (e.g., the last 24 hours, a week or a past day), call
   get_measurement_history instead of estimating a count for
   get_recent_measurements: measurement intervals differ per timeseries (1, 5,
@@ -79,6 +84,7 @@ mcp = FastMCP("Pegelonline", instructions=INSTRUCTIONS, version=__version__)
 
 tools_stations.register(mcp)
 tools_measurements.register(mcp)
+tools_forecast.register(mcp)
 tools_charts.register(mcp)
 # Before the other resources, which keeps the order of resources/list
 ui.register(mcp)

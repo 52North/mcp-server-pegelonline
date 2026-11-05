@@ -164,7 +164,9 @@ async def get_station_info(uuid: str) -> StationInfo:
     """
     Fetch static metadata for a specific station (name, agency, coordinates,
     water body, gauge zero and available observation parameters with their
-    comments, e.g. disturbances) without any measurement values.
+    comments, e.g. disturbances) without any measurement values. WV
+    (WASSERSTANDVORHERSAGE) is a water level forecast, not a measured
+    parameter: get_water_level_forecast returns it.
 
     Args:
         uuid: The unique identifier (UUID) of the station.

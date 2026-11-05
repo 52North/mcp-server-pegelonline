@@ -10,7 +10,7 @@ from pegelonline_mcp.config import BASE_URL, OFFICIAL_API_URL
 from pegelonline_mcp.errors import caller_error
 from pegelonline_mcp.http_client import NotFoundError, get_json, get_png
 from pegelonline_mcp.mapping import station_timeseries
-from pegelonline_mcp.models import Measurement
+from pegelonline_mcp.models import ForecastValue, Measurement
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,10 @@ DEFAULT_INTERVAL_MINUTES = 15
 # tokens, so a chart costs about 480 whatever its span.
 CHART_WIDTH = 900
 CHART_HEIGHT = 400
+
+# The water level forecast (WASSERSTANDVORHERSAGE), the only forecast series;
+# the API lists it only with includeForecastTimeseries
+FORECAST_PARAMETER = "WV"
 
 
 async def search(params: dict | None = None) -> list[dict]:
@@ -55,11 +59,19 @@ def _segment(value: str) -> str:
     return quote(value, safe="")
 
 
-async def fetch_station(uuid: str, current: bool = False) -> dict:
-    """Station metadata with its timeseries, optionally with current measurements."""
-    params = {"includeTimeseries": "true"}
+async def fetch_station(
+    uuid: str, current: bool = False, characteristic_values: bool = False
+) -> dict:
+    """Station metadata with its timeseries, the forecast WV included.
+
+    Optionally with the current measurements and the characteristic values
+    of the timeseries.
+    """
+    params = {"includeTimeseries": "true", "includeForecastTimeseries": "true"}
     if current:
         params["includeCurrentMeasurement"] = "true"
+    if characteristic_values:
+        params["includeCharacteristicValues"] = "true"
     url = f"{OFFICIAL_API_URL}/stations/{_segment(uuid)}.json"
     try:
         return await get_json(url, params=params)
@@ -81,6 +93,13 @@ async def fetch_stations_current(ids: list[str], parameter: str) -> list[dict]:
         "includeCurrentMeasurement": "true",
         "includeCharacteristicValues": "true",
     }
+    return await get_json(f"{OFFICIAL_API_URL}/stations.json", params=params)
+
+
+async def fetch_forecast_stations(water: str) -> list[dict]:
+    """The stations on ``water`` (a short name) with a forecast WV, without
+    their timeseries."""
+    params = {"waters": water, "timeseries": FORECAST_PARAMETER}
     return await get_json(f"{OFFICIAL_API_URL}/stations.json", params=params)
 
 
@@ -183,6 +202,17 @@ async def fetch_measurements_since(
     """
     url = _measurements_url(uuid, parameter)
     return await get_json(url, params=_window_params(start, end))
+
+
+async def fetch_forecast(uuid: str) -> list[ForecastValue]:
+    """The values of the latest forecast run of a station, oldest first.
+
+    Without a window, the API returns the whole run, including the values
+    that already lie in the past; it keeps no earlier runs. Each value
+    carries initialized, type and, from some sources, percentile10 and
+    percentile90.
+    """
+    return await get_json(_measurements_url(uuid, FORECAST_PARAMETER))
 
 
 async def fetch_measurements_chart(

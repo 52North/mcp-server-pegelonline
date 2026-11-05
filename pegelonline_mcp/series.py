@@ -1,6 +1,6 @@
 """Pure functions that turn measurements into rows, a summary and chart values."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from statistics import fmean
 
@@ -24,7 +24,7 @@ Point = tuple[datetime, float]
 Rows = dict[str, list[float | None]]
 
 
-def points(measurements: list[Measurement]) -> list[Point]:
+def points(measurements: Sequence[Measurement]) -> list[Point]:
     """Values with parsed timestamps; measurements without a value are skipped."""
     return [
         (datetime.fromisoformat(m["timestamp"]), m["value"])

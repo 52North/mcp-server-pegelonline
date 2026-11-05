@@ -130,6 +130,16 @@ def characteristic_value(cv: dict) -> CharacteristicValue:
     }
 
 
+def characteristic_value_map(ts: dict) -> dict[str, float | None]:
+    """Characteristic values of a timeseries as short name to value,
+    e.g. {"MNW": 114.0, "MW": 297.0}."""
+    return {
+        cv["shortname"]: cv.get("value")
+        for cv in ts.get("characteristicValues") or []
+        if isinstance(cv, dict) and isinstance(cv.get("shortname"), str)
+    }
+
+
 def station_summary(station: dict) -> StationSummary:
     """Compact station description with its observation parameters."""
     return {

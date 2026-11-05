@@ -10,10 +10,14 @@ from fastmcp.exceptions import ToolError
 from conftest import (
     CHART_PNG,
     CHART_URL,
+    FORECAST_URL,
+    KAUB_URL,
+    KAUB_UUID,
     KOELN_UUID,
     MEASUREMENTS_URL,
     SEARCH_URL,
     STATION_URL,
+    STATIONS_URL,
     TIMESERIES_URL,
     fake_measurements_api,
     load_fixture,
@@ -30,12 +34,16 @@ async def test_search_without_stations_key(respx_mock):
     assert await client.search() == []
 
 
+# Without includeForecastTimeseries, the API leaves out the forecast WV
+STATION_PARAMS = {"includeTimeseries": "true", "includeForecastTimeseries": "true"}
+
+
 async def test_fetch_station(respx_mock):
     route = respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
 
     await client.fetch_station(KOELN_UUID)
 
-    assert dict(route.calls.last.request.url.params) == {"includeTimeseries": "true"}
+    assert dict(route.calls.last.request.url.params) == STATION_PARAMS
 
 
 async def test_fetch_station_current(respx_mock):
@@ -44,8 +52,43 @@ async def test_fetch_station_current(respx_mock):
     await client.fetch_station(KOELN_UUID, current=True)
 
     assert dict(route.calls.last.request.url.params) == {
-        "includeTimeseries": "true",
+        **STATION_PARAMS,
         "includeCurrentMeasurement": "true",
+    }
+
+
+async def test_fetch_station_current_and_characteristic_values(respx_mock):
+    route = respx_mock.get(KAUB_URL).respond(json=load_fixture("station_kaub_forecast"))
+
+    await client.fetch_station(KAUB_UUID, current=True, characteristic_values=True)
+
+    assert dict(route.calls.last.request.url.params) == {
+        **STATION_PARAMS,
+        "includeCurrentMeasurement": "true",
+        "includeCharacteristicValues": "true",
+    }
+
+
+async def test_fetch_forecast(respx_mock):
+    route = respx_mock.get(FORECAST_URL).respond(json=load_fixture("forecast_kaub"))
+
+    values = await client.fetch_forecast(KAUB_UUID)
+
+    # Without a window, the API returns the whole latest run
+    assert dict(route.calls.last.request.url.params) == {}
+    assert values == load_fixture("forecast_kaub")
+
+
+async def test_fetch_forecast_stations(respx_mock):
+    route = respx_mock.get(STATIONS_URL).respond(
+        json=load_fixture("stations_forecast_rhein")
+    )
+
+    await client.fetch_forecast_stations("RHEIN")
+
+    assert dict(route.calls.last.request.url.params) == {
+        "waters": "RHEIN",
+        "timeseries": "WV",
     }
 
 
@@ -83,7 +126,8 @@ async def test_fetch_station_accepts_numbers_and_names(respx_mock, identifier, s
     await client.fetch_station(identifier)
 
     assert route.calls.last.request.url.raw_path.endswith(
-        b"/stations/" + segment + b".json?includeTimeseries=true"
+        b"/stations/" + segment
+        + b".json?includeTimeseries=true&includeForecastTimeseries=true"
     )
 
 

@@ -18,6 +18,7 @@ from pegelonline_mcp.mapping import (
     water_name,
 )
 from pegelonline_mcp.models import MeasurementsChart
+from pegelonline_mcp.tools_forecast import reject_forecast
 from pegelonline_mcp.ui import CHART_UI_URI
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ async def get_measurements_chart(
         "get_measurements_chart: uuid=%s parameter=%s hours=%s start=%s end=%s",
         uuid, parameter, hours, start, end,
     )
+    reject_forecast(parameter)
     since = windows.window_start(hours, start, end)
     # No metadata first: only an unknown station or parameter costs a
     # second request, to tell which
@@ -139,6 +141,7 @@ async def show_measurements_chart(
         "show_measurements_chart: uuid=%s parameter=%s hours=%s start=%s end=%s",
         uuid, parameter, hours, start, end,
     )
+    reject_forecast(parameter)
     window_start, window_end = windows.absolute_window(hours, start, end)
     station = await client.fetch_station(uuid)
     timeseries = station_timeseries(station, parameter)

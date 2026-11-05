@@ -7,6 +7,7 @@ steps can prove the responses stay identical.
 import base64
 import json
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -22,6 +23,9 @@ from mcp.types import ImageContent
 from conftest import (
     CHART_PNG,
     CHART_URL,
+    FORECAST_URL,
+    KAUB_URL,
+    KAUB_UUID,
     KOELN_UUID,
     MEASUREMENTS_URL,
     SEARCH_URL,
@@ -32,7 +36,7 @@ from conftest import (
     fake_measurements_api,
     load_fixture,
 )
-from pegelonline_mcp import tools_charts, tools_measurements
+from pegelonline_mcp import tools_charts, tools_forecast, tools_measurements
 from pegelonline_mcp.client import HISTORY_MINUTES
 from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.series import MAX_RAW_SLOTS
@@ -1062,6 +1066,91 @@ async def test_get_chart_values_past_the_kept_history(client, respx_mock):
     }
 
 
+def mock_forecast(respx_mock, values: list[dict[str, Any]]):
+    """Kaub with its forecast WV, serving ``values`` as the latest run."""
+    respx_mock.get(KAUB_URL).respond(json=load_fixture("station_kaub_forecast"))
+    return respx_mock.get(FORECAST_URL).respond(json=values)
+
+
+async def test_get_water_level_forecast(client, respx_mock, snapshot_json):
+    mock_forecast(respx_mock, load_fixture("forecast_kaub"))
+
+    result = await client.call_tool("get_water_level_forecast", {"uuid": KAUB_UUID})
+
+    data = result.structured_content
+    # The last forecast; the estimates follow it
+    assert data["forecast_until"] == "2026-11-07T07:00+01:00"
+    assert data["values"]["2026-11-07T09:00+01:00"] == 15
+    # The measured W and its reference values, to compare the run with
+    assert data["current"]["value"] == 19
+    assert data["characteristic_values"]["NNW"] == 25
+    assert json.loads(result.content[0].text) == data
+    assert data == snapshot_json
+
+
+async def test_get_water_level_forecast_with_range(client, respx_mock):
+    # Values from the Oder, whose source gives a range around each value
+    mock_forecast(respx_mock, load_fixture("forecast_kietz"))
+
+    result = await client.call_tool("get_water_level_forecast", {"uuid": KAUB_UUID})
+
+    values = result.structured_content["values"]
+    assert values["2026-11-07T06:00+01:00"] == [180, 184, 188]
+
+
+async def test_get_water_level_forecast_names_nearest_stations_with_one(respx_mock):
+    # The fixture has no WV, while the list of the Rhine's stations with one
+    # holds Köln as well
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+    route = respx_mock.get(STATIONS_URL).respond(
+        json=load_fixture("stations_forecast_rhein")
+    )
+
+    with pytest.raises(ToolError) as exc:
+        await tools_forecast.get_water_level_forecast(KOELN_UUID)
+
+    assert dict(route.calls.last.request.url.params) == {
+        "waters": "RHEIN", "timeseries": "WV"
+    }
+    # The three nearest by river kilometer, in the order of the river
+    assert re.fullmatch(
+        r"Station KÖLN has no water level forecast \(WV\)\. Nearest stations on "
+        r"RHEIN with one: KOBLENZ \(km 591\.49, uuid [-0-9a-f]+\), "
+        r"DÜSSELDORF \(km 744\.2, uuid [-0-9a-f]+\), "
+        r"DUISBURG-RUHRORT \(km 780\.8, uuid [-0-9a-f]+\)\.",
+        str(exc.value),
+    )
+    assert exc.value.log_level == logging.WARNING
+
+
+async def test_get_water_level_forecast_none_on_the_water(client, respx_mock):
+    respx_mock.get(STATION_URL).respond(json=load_fixture("station_koeln"))
+    respx_mock.get(STATIONS_URL).respond(json=[])
+
+    with pytest.raises(
+        ToolError, match=r"has no water level forecast \(WV\)\. No station on RHEIN has one\.$"
+    ):
+        await client.call_tool("get_water_level_forecast", {"uuid": KOELN_UUID})
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        ("get_recent_measurements", {"uuid": KAUB_UUID}),
+        ("get_measurement_history", {"uuid": KAUB_UUID}),
+        ("get_measurements_chart", {"uuid": KAUB_UUID}),
+        ("show_measurements_chart", {"uuid": KAUB_UUID}),
+        ("compare_stations", {"uuids": [KAUB_UUID]}),
+    ],
+)
+async def test_measurement_tools_reject_the_forecast(client, respx_mock, tool, arguments):
+    # Rejected before any request, which respx would refuse unmocked
+    with pytest.raises(
+        ToolError, match="wv is a water level forecast.*call get_water_level_forecast"
+    ):
+        await client.call_tool(tool, {**arguments, "parameter": "wv"})
+
+
 async def test_chart_tools_are_linked_to_the_ui(client):
     tools = {t.name: t for t in await client.list_tools()}
 
@@ -1272,6 +1361,14 @@ async def test_history_allows_large_results(client):
                 "interval_minutes", "start", "end", "summary", "note",
             },
         ),
+        (
+            "get_water_level_forecast",
+            {
+                "uuid", "station", "water", "unit", "initialized", "source",
+                "interval_minutes", "current", "characteristic_values",
+                "forecast_until", "summary", "values",
+            },
+        ),
     ],
 )
 async def test_output_schema_describes_response(client, tool, properties):
@@ -1305,6 +1402,7 @@ async def test_tools_are_annotated_read_only(client):
         "get_measurements_chart",
         "show_measurements_chart",
         "get_chart_values",
+        "get_water_level_forecast",
     }
     for tool in tools:
         assert tool.annotations.read_only_hint is True, tool.name

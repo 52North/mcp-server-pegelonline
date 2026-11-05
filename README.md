@@ -19,6 +19,9 @@ Pegelonline REST API.
 - **Characteristic values**: `get_characteristic_values` returns a water level's
   reference values (MNW, MW, MHW, HSW, record low and high, tidal values) with the
   current value, so a reading can be told high or low.
+- **Forecasts**: `get_water_level_forecast` returns the water level forecast of the
+  43 stations that have one, on the Elbe, Oder, Rhine, Danube and Saale, with the
+  current value and the characteristic values to compare it with.
 - **Charts**: `get_measurements_chart` returns the official line chart of such a
   span as an image for the model, about 480 image tokens whatever the span.
 - **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
@@ -234,7 +237,9 @@ takes about 7 600 characters.
 
 Returns static metadata for a station by `uuid`: names, agency, coordinates,
 river kilometer, water body and the available observation parameters
-(shortname, longname, unit, measurement interval, gauge zero, comment).
+(shortname, longname, unit, measurement interval, gauge zero, comment). They
+include the water level forecast `WV` where a station has one; its values come
+from `get_water_level_forecast`.
 
 ### `get_latest_measurements`
 
@@ -328,6 +333,39 @@ their timestamps, and `mean`. The response also carries the timeseries' `unit`,
 The largest responses reach about 48 000 characters. The tool sets
 `_meta["anthropic/maxResultSizeChars"]` to 60 000, so Claude Code keeps them in
 context instead of moving them to a file.
+
+### `get_water_level_forecast`
+
+Returns the latest water level forecast (Wasserstandsvorhersage, `WV`) of a station
+by `uuid`. 43 stations have one, from four sources: the BfG for the Rhine and the
+Danube, the WSA Elbe for the Elbe and the Saale, the LfU Brandenburg for the Oder,
+and the BfG for Havelberg. A run covers one to eight days in steps of 60 or 120
+minutes.
+
+`values` maps each time in German local time to the expected W. Up to
+`forecast_until` the values are forecasts (Vorhersage), later ones estimates
+(Abschätzung). On the Oder, each value is `[percentile10, value, percentile90]`.
+`initialized` and `source` (the timeseries comment) say when and by whom the run was
+computed. The official API keeps only the latest run, which can be a day old, so
+its first values may lie in the past. `current`, the latest measured W with both
+states, shows how well the run matches, and W's `characteristic_values` (short
+name and value, as in `compare_stations`) how low or high the expected levels are.
+`summary` is that of `get_measurement_history`. The tool sends two requests: the
+station with its forecast series, current W and characteristic values, then the
+values of the run. A response takes about 1 600 to 2 400 characters, on the Oder
+about 6 100.
+
+For a station without a forecast, the error names the three stations on its water
+body nearest by river kilometer that have one, e.g. Oestrich, Kaub and Koblenz for
+Bingen. `search_stations` cannot find them: the dict API does not know `WV`
+(`parameter=WV` finds no station).
+
+`get_station_info` lists `WV`, since `fetch_station` asks for forecast series. The
+tools for measured values (`get_recent_measurements`, `get_measurement_history`,
+`get_measurements_chart`, `show_measurements_chart` and `compare_stations`) reject
+it and point to this tool: the official chart draws no `WV`, the most recent
+values would be the furthest estimates, and the history would lose the type and
+the range of each value.
 
 ### `get_measurements_chart`
 

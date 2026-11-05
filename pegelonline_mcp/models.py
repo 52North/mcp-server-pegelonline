@@ -220,6 +220,17 @@ class Measurement(TypedDict):
     value: CompactNumber | None
 
 
+class ForecastValue(Measurement, total=False):
+    """Value of a forecast run as the official API returns it."""
+
+    initialized: str | None
+    # "forecast", later "estimate"
+    type: str | None
+    # Only from some sources, e.g. on the Oder
+    percentile10: float | None
+    percentile90: float | None
+
+
 class RecentMeasurements(TypedDict):
     """Recent measurements of one parameter, most recent first."""
 
@@ -261,6 +272,28 @@ class MeasurementHistory(HistoryRows):
     comment: str | None
     interval_minutes: int | None
     summary: HistorySummary
+
+
+class WaterLevelForecast(TypedDict):
+    """Latest water level forecast (WV) of a station, with its measured W."""
+
+    uuid: str | None
+    station: str | None
+    water: str | None
+    unit: str | None
+    # When the run was computed, and by whom (the timeseries comment)
+    initialized: str | None
+    source: str | None
+    interval_minutes: int | None
+    # The latest measured W with its states and W's characteristic values
+    current: CurrentMeasurement | None
+    characteristic_values: dict[str, float | None]
+    # Values up to here are forecasts, later ones estimates
+    forecast_until: str | None
+    summary: HistorySummary
+    # Time to value, or to [percentile10, value, percentile90] where the
+    # source gives the range
+    values: dict[str, CompactNumber | list[CompactNumber | None] | None]
 
 
 class MeasurementsChart(TypedDict):

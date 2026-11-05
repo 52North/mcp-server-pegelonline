@@ -10,6 +10,7 @@ from pegelonline_mcp.annotations import READ_ONLY
 from pegelonline_mcp.constraints import Hours, RecentCount, Resolution, StationIds
 from pegelonline_mcp.mapping import (
     characteristic_value,
+    characteristic_value_map,
     current_measurement,
     normalize_timeseries,
     timeseries_comment,
@@ -24,6 +25,7 @@ from pegelonline_mcp.models import (
     RecentMeasurements,
     StationComparison,
 )
+from pegelonline_mcp.tools_forecast import reject_forecast
 
 logger = logging.getLogger(__name__)
 
@@ -154,11 +156,7 @@ def _compared_station(station: dict) -> ComparedStation:
         "gaugeZero": ts.get("gaugeZero"),
         "comment": timeseries_comment(ts),
         "current": current_measurement(ts),
-        "characteristic_values": {
-            cv["shortname"]: cv.get("value")
-            for cv in ts.get("characteristicValues") or []
-            if isinstance(cv, dict) and isinstance(cv.get("shortname"), str)
-        },
+        "characteristic_values": characteristic_value_map(ts),
     }
 
 
@@ -187,6 +185,7 @@ async def compare_stations(uuids: StationIds, parameter: str = "W") -> StationCo
         parameter: The shortname of the parameter (default: 'W').
     """
     logger.info("compare_stations: %d uuids parameter=%s", len(uuids), parameter)
+    reject_forecast(parameter)
     requested = list(dict.fromkeys(uuid.strip() for uuid in uuids))
     # The API returns the uuids in lower case and in its own order
     found = {
@@ -232,6 +231,7 @@ async def get_recent_measurements(
         "get_recent_measurements: uuid=%s parameter=%s count=%d",
         uuid, parameter, count,
     )
+    reject_forecast(parameter)
     # Fetched first: an unknown station or parameter fails here, with an
     # error that says which
     timeseries = await client.fetch_timeseries(uuid, parameter)
@@ -306,6 +306,7 @@ async def get_measurement_history(
         "resolution=%s",
         uuid, parameter, hours, start, end, resolution,
     )
+    reject_forecast(parameter)
     since = windows.window_start(hours, start, end)
     # Fetched first: an unknown station or parameter fails here, with an
     # error that says which

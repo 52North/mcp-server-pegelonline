@@ -25,6 +25,10 @@ TIMESERIES_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W.json"
 MEASUREMENTS_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W/measurements.json"
 CHART_URL = f"{OFFICIAL_API_URL}/stations/{KOELN_UUID}/W/measurements.png"
 WATERS_URL = f"{OFFICIAL_API_URL}/waters.json"
+# Kaub on the Rhine, one of the stations with a water level forecast (WV)
+KAUB_UUID = "1d26e504-7f9e-480a-b52c-5932be6549ab"
+KAUB_URL = f"{OFFICIAL_API_URL}/stations/{KAUB_UUID}.json"
+FORECAST_URL = f"{OFFICIAL_API_URL}/stations/{KAUB_UUID}/WV/measurements.json"
 
 # Nothing decodes a chart, so the PNG signature stands in for a whole image
 CHART_PNG = b"\x89PNG\r\n\x1a\nchart"

@@ -1,0 +1,59 @@
+{
+  "characteristic_values": {
+    "GlW": 77.0,
+    "HHW": 825.0,
+    "HSW": 640.0,
+    "HW": 719.0,
+    "MHW": 544.0,
+    "MNW": 65.0,
+    "MW": 208.0,
+    "M_I": 460.0,
+    "M_II": 640.0,
+    "NNW": 25.0,
+    "NW": 25.0,
+    "TuGLW": 190.0
+  },
+  "current": {
+    "state_mnw_mhw": "low",
+    "state_nsw_hsw": "normal",
+    "timestamp": "2026-11-05T08:45:00+01:00",
+    "value": 19.0
+  },
+  "forecast_until": "2026-11-07T07:00+01:00",
+  "initialized": "2026-11-05T07:00+01:00",
+  "interval_minutes": 120,
+  "source": "Vorhersagen und Abschätzungen vom: 05.11.2026 um 07:00 Uhr, Quelle: Bundesanstalt für Gewässerkunde. Weitere Informationen zur Unterscheidung von Vorhersage und Abschätzung finden Sie auf den Seiten der Bundesanstalt für Gewässerkunde",
+  "station": "KAUB",
+  "summary": {
+    "count": 6,
+    "first": {
+      "timestamp": "2026-11-07T03:00:00+01:00",
+      "value": 18
+    },
+    "last": {
+      "timestamp": "2026-11-07T13:00:00+01:00",
+      "value": 13
+    },
+    "max": {
+      "timestamp": "2026-11-07T03:00:00+01:00",
+      "value": 18
+    },
+    "mean": 15.5,
+    "min": {
+      "timestamp": "2026-11-07T13:00:00+01:00",
+      "value": 13
+    },
+    "missing": 0
+  },
+  "unit": "cm",
+  "uuid": "1d26e504-7f9e-480a-b52c-5932be6549ab",
+  "values": {
+    "2026-11-07T03:00+01:00": 18,
+    "2026-11-07T05:00+01:00": 17,
+    "2026-11-07T07:00+01:00": 16,
+    "2026-11-07T09:00+01:00": 15,
+    "2026-11-07T11:00+01:00": 14,
+    "2026-11-07T13:00+01:00": 13
+  },
+  "water": "RHEIN"
+}
