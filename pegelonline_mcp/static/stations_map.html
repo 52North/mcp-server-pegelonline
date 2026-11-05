@@ -78,6 +78,12 @@
   .popup .meta { color: var(--ink-2); }
   .popup .level { margin: 6px 0; }
   .popup .uuid { color: var(--muted); font-size: 11px; word-break: break-all; }
+  .popup .section { margin-top: 6px; color: var(--ink-2); font-size: 12px; }
+  .popup .values { border-collapse: collapse; margin: 2px 0 4px; font-size: 12px; }
+  .popup .values th { text-align: left; font-weight: normal; padding: 1px 12px 1px 0; }
+  .popup .values .num { text-align: right; padding-right: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .popup .values .time { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .popup .values .comment { color: var(--ink-2); font-size: 11px; padding: 0 0 4px; }
   .center-icon { color: var(--ink); font-size: 16px; line-height: 16px; text-align: center; }
 </style>
 </head>
@@ -89,6 +95,10 @@
 
   const MAP_HEIGHT_PX = 480; // requested iframe height via ui/notifications/size-changed
   const REQUEST_TIMEOUT_MS = 60000;
+  // The gauges report legal German time, whatever the viewer's time zone
+  const TIME_ZONE = "Europe/Berlin";
+  // How long a popup reuses the other values it loaded
+  const LATEST_TTL_MS = 5 * 60 * 1000;
   const PROTOCOL_VERSION = "2026-01-26";
   // Notes that earn a station a strong ring
   const NOTABLE = ["below NNW", "above HHW", "above HSW"];
@@ -128,6 +138,15 @@
       noLevel: "No current water level",
       distance: d => `${d} km from the center`,
       parameters: "Parameters",
+      otherValues: "Other values",
+      loadingValues: "Loading the other values…",
+      valuesFailed: "Other values unavailable: ",
+      names: {
+        W: "Water level", Q: "Discharge", WT: "Water temperature", LT: "Air temperature",
+        LF: "Conductivity", WG: "Wind speed", WR: "Wind direction", O2: "Oxygen",
+        GRU: "Groundwater", PH: "pH", DFH: "Clearance", TR: "Turbidity",
+        VA: "Flow velocity", V: "Volume", HL: "Humidity", R: "Current direction",
+      },
     },
     de: {
       waiting: "Warte auf die Pegeldaten…",
@@ -161,15 +180,27 @@
       noLevel: "Kein aktueller Wasserstand",
       distance: d => `${d} km vom Mittelpunkt`,
       parameters: "Parameter",
+      otherValues: "Weitere Werte",
+      loadingValues: "Lade die weiteren Werte…",
+      valuesFailed: "Weitere Werte nicht verfügbar: ",
+      names: {
+        W: "Wasserstand", Q: "Abfluss", WT: "Wassertemperatur", LT: "Lufttemperatur",
+        LF: "Leitfähigkeit", WG: "Windgeschwindigkeit", WR: "Windrichtung", O2: "Sauerstoff",
+        GRU: "Grundwasser", PH: "pH-Wert", DFH: "Durchfahrtshöhe", TR: "Trübung",
+        VA: "Fließgeschwindigkeit", V: "Volumen", HL: "Luftfeuchte", R: "Strömungsrichtung",
+      },
     },
   };
 
   const state = {
     locale: validLocale(navigator.language),
+    serverTools: false, // whether the host lets the map call tools
     data: null, // structuredContent of show_stations_map
     message: "waiting", // a key of TEXT, or a text of its own
     detail: "",
   };
+  // Latest measurements per station uuid: { at, promise }
+  const latestCache = new Map();
 
   const $ = id => document.getElementById(id);
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -275,15 +306,86 @@
       `</div>`;
   }
 
-  function popupHtml(s) {
+  // The time of a value in German time; with its date unless it is today's
+  function formatTime(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const day = d => new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(d);
+    const options = { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" };
+    if (day(date) !== day(new Date())) Object.assign(options, { day: "2-digit", month: "2-digit" });
+    return new Intl.DateTimeFormat(state.locale, options).format(date);
+  }
+
+  function valueRowHtml(m) {
+    const name = text().names[m.shortname] || m.shortname || m.parameter || "";
+    const unit = m.unit && m.unit !== "--" ? ` ${m.unit}` : "";
+    const value = m.value == null ? "–" : `${formatNumber(m.value)}${unit}`;
+    const row = `<tr><th title="${escapeHtml(m.parameter)}">${escapeHtml(name)}</th>` +
+      `<td class="num">${escapeHtml(value)}</td>` +
+      `<td class="time">${escapeHtml(formatTime(m.timestamp))}</td></tr>`;
+    // E.g. why discharge is not determined at low water
+    return m.comment
+      ? row + `<tr><td colspan="3" class="comment">${escapeHtml(m.comment)}</td></tr>`
+      : row;
+  }
+
+  // The parameters of a station, or their current values once loaded:
+  // live is null, { loading: true }, { error } or { result }
+  function valuesHtml(s, live) {
+    const shortnames = (s.parameters || []).map(p => p.shortname).filter(Boolean).join(", ");
+    const list = shortnames
+      ? `<div class="meta">${escapeHtml(text().parameters)}: ${escapeHtml(shortnames)}</div>`
+      : "";
+    if (!live) return list;
+    if (live.loading) return `<div class="meta">${escapeHtml(text().loadingValues)}</div>`;
+    if (live.error) {
+      return `<div class="meta">${escapeHtml(text().valuesFailed + live.error)}</div>` + list;
+    }
+    // W stands above with its state, unless the map has no water level for it
+    const rows = ((live.result && live.result.measurements) || [])
+      .filter(m => !(m.shortname === "W" && s.water_level));
+    if (!rows.length) return list;
+    return `<div class="section">${escapeHtml(text().otherValues)}</div>` +
+      `<table class="values">${rows.map(valueRowHtml).join("")}</table>`;
+  }
+
+  function popupHtml(s, live = null) {
     const place = [s.water, s.distance_km != null ? text().distance(formatNumber(s.distance_km)) : null]
       .filter(Boolean).join(" · ");
-    const parameters = (s.parameters || []).map(p => p.shortname).filter(Boolean).join(", ");
     return `<div class="popup"><b>${escapeHtml(s.longname || s.shortname)}</b>` +
       (place ? `<br><span class="meta">${escapeHtml(place)}</span>` : "") +
       levelHtml(s.water_level) +
-      (parameters ? `<div class="meta">${escapeHtml(text().parameters)}: ${escapeHtml(parameters)}</div>` : "") +
+      valuesHtml(s, live) +
       `<div class="uuid">${escapeHtml(s.uuid || "")}</div></div>`;
+  }
+
+  function hasOtherValues(s) {
+    return (s.parameters || []).some(p => p.shortname && p.shortname !== "W");
+  }
+
+  // The latest measurements of a station, loaded once per LATEST_TTL_MS
+  function latestValues(uuid) {
+    const cached = latestCache.get(uuid);
+    if (cached && Date.now() - cached.at < LATEST_TTL_MS) return cached.promise;
+    const promise = callTool("get_latest_measurements", { uuid });
+    latestCache.set(uuid, { at: Date.now(), promise });
+    // A failed call is tried again on the next click
+    promise.catch(() => {
+      if (latestCache.get(uuid)?.promise === promise) latestCache.delete(uuid);
+    });
+    return promise;
+  }
+
+  // Fills an opened popup with the station's other current values. W alone
+  // needs no call: the popup shows it from the tool result.
+  async function showLatest(s, popup) {
+    if (!state.serverTools || !s.uuid || !hasOtherValues(s)) return;
+    popup.setContent(popupHtml(s, { loading: true }));
+    try {
+      popup.setContent(popupHtml(s, { result: await latestValues(s.uuid) }));
+    } catch (error) {
+      popup.setContent(popupHtml(s, { error: error.message }));
+    }
   }
 
   function tooltipText(s) {
@@ -332,7 +434,8 @@
       L.circleMarker([s.latitude, s.longitude], { ...style, pane: "stations" })
         .addTo(dataLayer)
         .bindTooltip(escapeHtml(tooltipText(s)), { direction: "top", offset: [0, -style.radius] })
-        .bindPopup(popupHtml(s), { maxWidth: 300 });
+        .bindPopup(popupHtml(s), { maxWidth: 320 })
+        .on("popupopen", event => showLatest(s, event.popup));
     }
     renderLegend(counts, notableCount);
   }
@@ -390,6 +493,12 @@
   function toolText(result) {
     return ((result && result.content) || [])
       .filter(c => c.type === "text").map(c => c.text).join(" ");
+  }
+
+  async function callTool(name, args) {
+    const result = await request("tools/call", { name, arguments: args });
+    if (result && result.isError) throw new Error(toolText(result));
+    return result && result.structuredContent;
   }
 
   function extractToolData(result) {
@@ -478,6 +587,7 @@
     appCapabilities: {},
     protocolVersion: PROTOCOL_VERSION,
   }).then(result => {
+    state.serverTools = Boolean(result && result.hostCapabilities && result.hostCapabilities.serverTools);
     applyHostContext(result && result.hostContext);
     send({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
     // Ask the host for a fixed map height; Leaflet fills whatever box it gets

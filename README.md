@@ -484,6 +484,13 @@ dashed ones, and a strong ring marks a record level or a level above HSW. A lege
 counts the stations per kind; a tooltip names a station and its value, and its
 popup adds the water body, distance, state, notes, parameters and UUID.
 
+Opening the popup of a station with more parameters than W loads their current
+values through `get_latest_measurements`, in hosts that let apps call tools
+(`serverTools`): each with its name in the viewer's language, unit, time (with the
+date if not today) and timeseries comment. 505 of the 691 stations measure only W,
+which the popup already shows, so they need no call. The map keeps loaded values
+for 5 minutes.
+
 The map follows the host's theme (OpenStreetMap tiles inverted in dark mode) and
 language (German for `de-*`, else English), speaks MCP Apps protocol `2026-01-26`,
 shows the error of a failed tool call, loads Leaflet from unpkg pinned by
