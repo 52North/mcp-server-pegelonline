@@ -27,8 +27,9 @@ Pegelonline REST API.
   current value and the characteristic values to compare it with.
 - **Charts**: `get_measurements_chart` returns the official line chart of such a
   span as an image for the model, about 480 image tokens whatever the span.
-- **Interactive map**: `show_stations_map` renders the stations on a Leaflet map
-  (MCP App) in Claude Desktop and claude.ai.
+- **Interactive maps**: `show_stations_map` renders the stations around a place on a
+  Leaflet map (MCP App) in Claude Desktop and claude.ai, `show_water_level_map` those
+  of whole water bodies or of Germany; markers show the current water level.
 - **Interactive chart**: `show_measurements_chart` shows the user a zoomable chart
   of such a span (MCP App, uPlot) with switchable characteristic values in Claude
   Desktop and claude.ai; the model receives only the summary.
@@ -495,6 +496,33 @@ The map follows the host's theme (OpenStreetMap tiles inverted in dark mode) and
 language (German for `de-*`, else English), speaks MCP Apps protocol `2026-01-26`,
 shows the error of a failed tool call, loads Leaflet from unpkg pinned by
 subresource integrity hashes and only accepts messages from its host frame.
+
+### `show_water_level_map`
+
+Shows the user a map of the current water levels along whole water bodies or across
+Germany, the graphic counterpart of `get_water_level_overview`, with the same
+arguments: `water` (German short or long names, several separated by commas) and
+`state`, which keeps only the stations in that state. It renders in the UI of
+`show_stations_map`, with the same markers, legend and popups, but without a search
+radius; the legend names the water bodies (or Germany) and the time of the newest
+value, and popups give the river kilometer.
+
+Like `show_measurements_chart`, it splits the data between model and map:
+
+- The model receives only the summary: the counts per state, in total and per water
+  body, and the notable stations, as `get_water_level_overview` lists them for
+  Germany, plus a `note` whether the client shows the map. On 2026-11-05 that was
+  about 5 500 characters for Germany and 2 100 for the Rhine.
+- The map loads its stations through `get_water_level_map_stations`, a tool only
+  for the UI (`visibility: ["app"]`): every station in scope with its coordinates,
+  river kilometer and water level, in `structuredContent` only. All 738 stations take
+  about 196 000 characters, which reach the UI but not the model. Hosts that let apps
+  call no tools show a note instead of the stations.
+
+Both read the cached download of `get_water_level_overview`. The markers shrink when
+zoomed out (to 60 % up to zoom level 6, 80 % up to 8), so Germany stays readable.
+Since these stations come without their parameters, a popup always asks
+`get_latest_measurements` for the other values.
 
 ## Resources
 

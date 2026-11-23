@@ -4,7 +4,6 @@ import logging
 
 from fastmcp import FastMCP
 from fastmcp.apps import UI_EXTENSION_ID, AppConfig
-from fastmcp.server.dependencies import get_context
 from fastmcp.tools import ToolResult
 from fastmcp.utilities.types import Image
 from pydantic import AwareDatetime
@@ -19,7 +18,7 @@ from pegelonline_mcp.mapping import (
 )
 from pegelonline_mcp.models import MeasurementsChart
 from pegelonline_mcp.tools_forecast import reject_forecast
-from pegelonline_mcp.ui import CHART_UI_URI
+from pegelonline_mcp.ui import CHART_UI_URI, client_renders_apps
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +30,6 @@ CHART_NOT_SHOWN_NOTE = (
     "This client shows no chart, so the user sees nothing. Describe the "
     "course from get_measurements_chart."
 )
-
-
-def _client_renders_apps() -> tuple[bool, str | None]:
-    """Whether the client declared MCP Apps, and its name for the log."""
-    try:
-        ctx = get_context()
-        params = ctx.session.client_params
-    except RuntimeError:
-        return False, None
-    name = params.client_info.name if params is not None else None
-    return ctx.client_supports_extension(UI_EXTENSION_ID), name
 
 
 async def get_measurements_chart(
@@ -152,7 +140,7 @@ async def show_measurements_chart(
     )
     points = series.points(measurements)
     interval = timeseries.get("equidistance")
-    shown, client_name = _client_renders_apps()
+    shown, client_name = client_renders_apps()
     logger.info(
         "show_measurements_chart: uuid=%s parameter=%s -> %d values; "
         "client %s declares %s: %s",

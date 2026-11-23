@@ -47,7 +47,7 @@ from pegelonline_mcp.config import OFFICIAL_API_URL
 from pegelonline_mcp.series import MAX_RAW_SLOTS
 from pegelonline_mcp.server import mcp
 from pegelonline_mcp.tools_measurements import MAX_RESULT_CHARS
-from pegelonline_mcp.ui import CHART_UI_URI
+from pegelonline_mcp.ui import CHART_UI_URI, MAP_UI_URI
 
 KOELN_LAT, KOELN_LON = 50.94, 6.96
 KOELN = {"latitude": KOELN_LAT, "longitude": KOELN_LON}
@@ -1339,6 +1339,86 @@ async def test_get_water_level_overview_shares_a_download(client, respx_mock):
     assert route.call_count == 1
 
 
+async def test_show_water_level_map(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("show_water_level_map", {"water": "RHEIN"})
+
+    data = result.structured_content
+    # The model gets the counts and the notable stations; the map UI loads
+    # every station itself
+    assert data["counts"] == {"low": 3, "normal": 1, "unknown": 1}
+    assert names(result) == ["KAUB"]
+    assert data["note"] == tools_overview.MAP_NOT_SHOWN_NOTE
+    assert json.loads(result.content[0].text) == data
+
+
+async def test_show_water_level_map_of_germany_matches_overview(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    overview = await client.call_tool("get_water_level_overview", {"state": "low"})
+    shown = await client.call_tool("show_water_level_map", {"state": "low"})
+
+    assert {k: v for k, v in shown.structured_content.items() if k != "note"} == (
+        overview.structured_content
+    )
+
+
+async def test_show_water_level_map_note_with_apps(respx_mock):
+    mock_water_levels(respx_mock)
+
+    async with Client(mcp, extensions=[advertise(UI_EXTENSION_ID)]) as apps_client:
+        result = await apps_client.call_tool("show_water_level_map", {})
+
+    assert result.structured_content["note"] == tools_overview.MAP_SHOWN_NOTE
+
+
+async def test_get_water_level_map_stations(client, respx_mock):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("get_water_level_map_stations", {"water": "RHEIN"})
+
+    stations = result.structured_content["stations"]
+    # Every station in scope, by km, with what a marker needs
+    assert [s["longname"] for s in stations] == [
+        "KONSTANZ-RHEIN", "RHEINWEILER", "WORMS", "KAUB", "KÖLN"
+    ]
+    kaub = stations[3]
+    assert set(kaub) == {
+        "uuid", "longname", "water", "km", "latitude", "longitude",
+        "water_level", "forecast",
+    }
+    assert kaub["water_level"] == {
+        "value": 19, "unit": "cm", "state_mnw_mhw": "low", "notes": ["below NNW"]
+    }
+    assert isinstance(kaub["latitude"], float) and kaub["forecast"] is True
+    # The stations go only to the map UI; the text just counts them
+    assert "5 stations" in result.content[0].text
+    assert "KAUB" not in result.content[0].text
+
+
+@pytest.mark.parametrize(
+    ("arguments", "count"),
+    [({}, 11), ({"state": "low"}, 4), ({"water": "RHEIN", "state": "low"}, 3)],
+    ids=["germany", "low", "rhein-low"],
+)
+async def test_get_water_level_map_stations_scope(client, respx_mock, arguments, count):
+    mock_water_levels(respx_mock)
+
+    result = await client.call_tool("get_water_level_map_stations", arguments)
+
+    assert len(result.structured_content["stations"]) == count
+
+
+async def test_water_level_map_tools_are_linked_to_the_ui(client):
+    tools = {t.name: t for t in await client.list_tools()}
+
+    # The same UI as the stations map
+    assert tools["show_water_level_map"].meta["ui"] == {"resourceUri": MAP_UI_URI}
+    # Hosts keep the stations from the model; only the map UI calls the tool
+    assert tools["get_water_level_map_stations"].meta["ui"] == {"visibility": ["app"]}
+
+
 async def test_chart_tools_are_linked_to_the_ui(client):
     tools = {t.name: t for t in await client.list_tools()}
 
@@ -1573,6 +1653,13 @@ async def test_history_allows_large_results(client):
                 "returned", "truncated", "stations",
             },
         ),
+        (
+            "show_water_level_map",
+            {
+                "water", "state", "latest", "counts", "waters", "total_matches",
+                "returned", "truncated", "stations", "note",
+            },
+        ),
     ],
 )
 async def test_output_schema_describes_response(client, tool, properties):
@@ -1608,6 +1695,8 @@ async def test_tools_are_annotated_read_only(client):
         "get_chart_values",
         "get_water_level_forecast",
         "get_water_level_overview",
+        "show_water_level_map",
+        "get_water_level_map_stations",
     }
     for tool in tools:
         assert tool.annotations.read_only_hint is True, tool.name

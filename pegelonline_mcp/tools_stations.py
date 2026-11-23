@@ -38,7 +38,7 @@ from pegelonline_mcp.models import (
     StationParameter,
     StationsMap,
 )
-from pegelonline_mcp.tools_overview import overview_station
+from pegelonline_mcp.tools_overview import overview_station, water_level_of
 from pegelonline_mcp.ui import MAP_UI_URI
 
 logger = logging.getLogger(__name__)
@@ -276,15 +276,7 @@ async def _water_levels_by_uuid() -> dict[str, dict]:
 def _map_water_level(station: dict | None) -> MapWaterLevel | None:
     """A station's current water level as the overview rates it, or None."""
     overview = overview_station(station) if station is not None else None
-    if overview is None:
-        return None
-    entry = overview[0]
-    return {
-        "value": entry["value"],
-        "unit": entry["unit"],
-        "state_mnw_mhw": entry["state_mnw_mhw"],
-        "notes": entry["notes"],
-    }
+    return water_level_of(overview[0]) if overview is not None else None
 
 
 async def show_stations_map(

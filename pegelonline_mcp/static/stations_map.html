@@ -61,6 +61,7 @@
   }
   #legend .title { font-size: 13px; font-weight: 600; }
   #legend .row { display: flex; align-items: center; gap: 6px; }
+  #legend .meta { color: var(--ink-2); }
   #legend .count { margin-left: auto; padding-left: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
   #legend svg { flex: none; }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-tooltip {
@@ -138,6 +139,11 @@
       noLevel: "No current water level",
       distance: d => `${d} km from the center`,
       parameters: "Parameters",
+      germany: "Germany",
+      loadingStations: "Loading the stations…",
+      noServerTools: "This client does not let the map load its stations.",
+      stationsFailed: "Could not load the stations: ",
+      asOf: t => `as of ${t}`,
       otherValues: "Other values",
       loadingValues: "Loading the other values…",
       valuesFailed: "Other values unavailable: ",
@@ -180,6 +186,11 @@
       noLevel: "Kein aktueller Wasserstand",
       distance: d => `${d} km vom Mittelpunkt`,
       parameters: "Parameter",
+      germany: "Deutschland",
+      loadingStations: "Lade die Pegel…",
+      noServerTools: "Dieser Client lässt die Karte keine Pegel laden.",
+      stationsFailed: "Die Pegel konnten nicht geladen werden: ",
+      asOf: t => `Stand ${t}`,
       otherValues: "Weitere Werte",
       loadingValues: "Lade die weiteren Werte…",
       valuesFailed: "Weitere Werte nicht verfügbar: ",
@@ -194,8 +205,10 @@
 
   const state = {
     locale: validLocale(navigator.language),
-    serverTools: false, // whether the host lets the map call tools
-    data: null, // structuredContent of show_stations_map
+    serverTools: null, // whether the host lets the map call tools; unknown until ui/initialize
+    data: null, // the drawn stations: show_stations_map's result, or the loaded ones
+    summary: null, // structuredContent of show_water_level_map
+    loading: null, // the summary whose stations are being loaded
     message: "waiting", // a key of TEXT, or a text of its own
     detail: "",
   };
@@ -238,6 +251,20 @@
   // The stations lie above the radius circle and the center marker (600),
   // below tooltips (650) and popups (700)
   map.createPane("stations").style.zIndex = 620;
+
+  // The drawn station markers with their kind, to resize them on zoom
+  let markerLayers = [];
+
+  // Markers shrink when zoomed out, so a map of Germany stays readable
+  function zoomScale() {
+    const zoom = map.getZoom();
+    return zoom <= 6 ? 0.6 : zoom <= 8 ? 0.8 : 1;
+  }
+
+  map.on("zoomend", () => {
+    const scale = zoomScale();
+    for (const { marker, radius } of markerLayers) marker.setRadius(radius * scale);
+  });
 
   // Bounds to fit until the user moves the map. The host may size the
   // frame only after the data arrives, and Leaflet fits a map of 0 × 0
@@ -350,8 +377,11 @@
   }
 
   function popupHtml(s, live = null) {
-    const place = [s.water, s.distance_km != null ? text().distance(formatNumber(s.distance_km)) : null]
-      .filter(Boolean).join(" · ");
+    const place = [
+      s.water,
+      s.km != null ? `km ${formatNumber(s.km)}` : null,
+      s.distance_km != null ? text().distance(formatNumber(s.distance_km)) : null,
+    ].filter(Boolean).join(" · ");
     return `<div class="popup"><b>${escapeHtml(s.longname || s.shortname)}</b>` +
       (place ? `<br><span class="meta">${escapeHtml(place)}</span>` : "") +
       levelHtml(s.water_level) +
@@ -359,8 +389,11 @@
       `<div class="uuid">${escapeHtml(s.uuid || "")}</div></div>`;
   }
 
+  // Unknown for the stations of a water level map, which come without
+  // their parameters: then the call tells
   function hasOtherValues(s) {
-    return (s.parameters || []).some(p => p.shortname && p.shortname !== "W");
+    if (!Array.isArray(s.parameters)) return true;
+    return s.parameters.some(p => p.shortname && p.shortname !== "W");
   }
 
   // The latest measurements of a station, loaded once per LATEST_TTL_MS
@@ -429,14 +462,18 @@
     }
     // Later markers cover earlier ones, so the rated and notable come last
     markers.sort((a, b) => a.rank - b.rank);
-    for (const { s, cat, notable } of markers) {
+    const scale = zoomScale();
+    markerLayers = markers.map(({ s, cat, notable }) => {
       const style = markerStyle(cat, notable);
-      L.circleMarker([s.latitude, s.longitude], { ...style, pane: "stations" })
+      const marker = L.circleMarker([s.latitude, s.longitude], {
+        ...style, radius: style.radius * scale, pane: "stations",
+      })
         .addTo(dataLayer)
         .bindTooltip(escapeHtml(tooltipText(s)), { direction: "top", offset: [0, -style.radius] })
         .bindPopup(popupHtml(s), { maxWidth: 320 })
         .on("popupopen", event => showLatest(s, event.popup));
-    }
+      return { marker, radius: style.radius };
+    });
     renderLegend(counts, notableCount);
   }
 
@@ -453,9 +490,20 @@
       rows.push(`<div class="row">${swatch(ring)}${escapeHtml(text().notable)}` +
         `<span class="count">${notableCount}</span></div>`);
     }
-    $("legend").innerHTML =
-      `<div class="title">${escapeHtml(data.truncated ? text().truncated(shown, total) : text().stations(shown))}</div>` +
-      rows.join("");
+    let title = data.truncated ? text().truncated(shown, total) : text().stations(shown);
+    let subtitle = "";
+    const summary = data.summary;
+    if (summary) {
+      const scope = summary.water
+        ? Object.keys(summary.waters || {}).join(", ") || summary.water
+        : text().germany;
+      const stateName = summary.state ? text().states[summary.state] || summary.state : null;
+      title = [scope, stateName, text().stations(shown)].filter(Boolean).join(" · ");
+      if (summary.latest) {
+        subtitle = `<div class="meta">${escapeHtml(text().asOf(formatTime(summary.latest)))}</div>`;
+      }
+    }
+    $("legend").innerHTML = `<div class="title">${escapeHtml(title)}</div>${subtitle}` + rows.join("");
   }
 
   function render(data) {
@@ -512,14 +560,47 @@
     }
   }
 
+  // The stations of a water level map, which only the map UI loads: after
+  // the tool result or after ui/initialize, whichever comes later
+  async function loadStations() {
+    const summary = state.summary;
+    if (!summary || state.serverTools === null || state.loading === summary) return;
+    if (!state.serverTools) {
+      showMessage("noServerTools");
+      return;
+    }
+    state.loading = summary;
+    showMessage("loadingStations");
+    try {
+      const result = await callTool(
+        "get_water_level_map_stations", { water: summary.water, state: summary.state }
+      );
+      if (state.summary !== summary) return; // a newer tool result took over
+      render({ summary, stations: (result && result.stations) || [] });
+    } catch (error) {
+      if (state.summary === summary) showMessage("stationsFailed", error.message);
+    } finally {
+      if (state.loading === summary) state.loading = null;
+    }
+  }
+
   function onToolResult(result) {
     if (result && result.isError) {
       showMessage(toolText(result));
       return;
     }
     const data = extractToolData(result);
-    if (data && Array.isArray(data.stations)) render(data);
-    else showMessage("noData");
+    if (data && data.center && Array.isArray(data.stations)) {
+      // show_stations_map: the stations come with the result
+      state.summary = null;
+      render(data);
+    } else if (data && data.counts) {
+      // show_water_level_map: only a summary; the stations follow
+      state.summary = data;
+      loadStations();
+    } else {
+      showMessage("noData");
+    }
   }
 
   function applyHostContext(context) {
@@ -583,7 +664,7 @@
 
   renderMessage();
   request("ui/initialize", {
-    appInfo: { name: "pegelonline-stations-map", version: "1.1.0" },
+    appInfo: { name: "pegelonline-stations-map", version: "1.2.0" },
     appCapabilities: {},
     protocolVersion: PROTOCOL_VERSION,
   }).then(result => {
@@ -596,6 +677,7 @@
       method: "ui/notifications/size-changed",
       params: { height: MAP_HEIGHT_PX },
     });
+    loadStations();
   }, error => showMessage("failed", error.message));
 </script>
 </body>

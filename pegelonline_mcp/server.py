@@ -28,7 +28,8 @@ Only federal waterways are covered; smaller rivers and streams have no stations 
 Workflow:
 - Locate stations with search_stations (by name, water body, state, ...) or,
   for a place or coordinate, with find_nearest_stations. Use show_stations_map
-  instead when the user asks for a map.
+  instead when the user asks for a map of the stations around a place, and
+  show_water_level_map for a map of a whole water body or of Germany.
 - When a search_stations filter finds nothing or too much, look up its values
   with list_search_values (e.g., the short names gewaesser and parameter take).
 - The location tools expect WGS84 coordinates, not place names: resolve the

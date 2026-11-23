@@ -270,6 +270,26 @@ class WaterLevelOverview(TypedDict):
     stations: list[OverviewStation]
 
 
+class WaterLevelMap(WaterLevelOverview):
+    """Summary of a water level map; the map UI loads its stations itself."""
+
+    # Whether the user sees the map, so the model knows if it must describe it
+    note: str
+
+
+class WaterLevelMarker(TypedDict):
+    """A station on the water level map, as the map UI loads it."""
+
+    uuid: str | None
+    longname: str | None
+    water: str | None
+    km: float | None
+    latitude: float | None
+    longitude: float | None
+    water_level: MapWaterLevel
+    forecast: bool
+
+
 class Measurement(TypedDict):
     """Single measurement as the official API returns it."""
 
